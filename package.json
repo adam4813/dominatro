@@ -1,0 +1,30 @@
+{
+  "name": "dominatro",
+  "version": "1.0.0",
+  "description": "A Balatro-like point-building game using dominoes, built with Three.js and Vite",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "format": "prettier --write .",
+    "prepare": "husky"
+  },
+  "keywords": [
+    "dominoes",
+    "game",
+    "three.js",
+    "vite"
+  ],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "husky": "^9.1.7",
+    "prettier": "^3.7.4",
+    "pretty-quick": "^4.2.2",
+    "vite": "^7.2.7"
+  },
+  "dependencies": {
+    "three": "^0.181.2"
+  }
+}
