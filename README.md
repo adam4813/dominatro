@@ -10,7 +10,7 @@ Dominatro is inspired by the roguelike deck-builder Balatro, but uses dominoes i
 
 - 🎮 3D domino rendering with realistic tile appearance
 - 🎲 Standard domino pip patterns (0-6 on each half)
-- 🖱️ Interactive camera controls with OrbitControls
+- 🖱️ Top-down camera view with zoom and pan controls
 - 📱 Responsive canvas that adapts to viewport size
 - ✨ Realistic lighting and shadows
 
