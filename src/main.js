@@ -25,6 +25,7 @@ class Game {
 }
 
 // Store game instance for later access (cleanup, testing, etc.)
+// Note: This will be null until DOMContentLoaded event fires
 let gameInstance = null;
 
 // Initialize the game when the page loads

@@ -132,18 +132,8 @@ export class Domino {
 
   dispose() {
     // Since we're using shared geometries and materials, we don't dispose them here
-    // Just remove all references to allow garbage collection of the mesh
-    this.mesh.traverse((child) => {
-      if (child.geometry) {
-        // Geometry is shared, don't dispose
-        child.geometry = null;
-      }
-      if (child.material) {
-        // Material is shared, don't dispose
-        child.material = null;
-      }
-    });
-    this.mesh = null;
+    // The mesh will be garbage collected after being removed from the scene
+    // Individual domino instances don't own the shared resources
   }
 
   // Static method to dispose shared resources when completely done with all dominoes
