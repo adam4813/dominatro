@@ -95,8 +95,7 @@ npm run format
 
 ### Camera Controls
 
-- **Left click + drag** - Rotate camera around the scene
-- **Right click + drag** - Pan the camera
+- **Right click + drag** (or **Middle click + drag**) - Pan the camera
 - **Mouse wheel** - Zoom in/out
 
 ## Deployment

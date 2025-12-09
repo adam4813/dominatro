@@ -57,11 +57,11 @@ export class Scene {
 
   setupControls() {
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
+    this.controls.enableRotate = false;
     this.controls.enableDamping = true;
     this.controls.dampingFactor = 0.05;
     this.controls.minDistance = 5;
     this.controls.maxDistance = 30;
-    this.controls.maxPolarAngle = Math.PI / 2 - 0.1;
   }
 
   setupGround() {
