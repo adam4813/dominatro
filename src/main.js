@@ -24,7 +24,12 @@ class Game {
   }
 }
 
+// Store game instance for later access (cleanup, testing, etc.)
+let gameInstance = null;
+
 // Initialize the game when the page loads
 window.addEventListener('DOMContentLoaded', () => {
-  new Game();
+  gameInstance = new Game();
 });
+
+export { gameInstance };

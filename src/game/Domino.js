@@ -1,6 +1,18 @@
 import * as THREE from 'three';
 
 export class Domino {
+  // Static shared geometries and materials for memory efficiency
+  static bodyGeometry = new THREE.BoxGeometry(1, 0.2, 2);
+  static bodyMaterial = new THREE.MeshStandardMaterial({
+    color: 0xf5f5dc,
+    roughness: 0.5,
+    metalness: 0.1,
+  });
+  static lineGeometry = new THREE.BoxGeometry(1.02, 0.22, 0.02);
+  static lineMaterial = new THREE.MeshStandardMaterial({ color: 0x333333 });
+  static pipGeometry = new THREE.SphereGeometry(0.08, 16, 16);
+  static pipMaterial = new THREE.MeshStandardMaterial({ color: 0x222222 });
+
   constructor(leftPips, rightPips) {
     this.leftPips = leftPips;
     this.rightPips = rightPips;
@@ -15,28 +27,14 @@ export class Domino {
     const height = 2;
     const depth = 0.2;
 
-    // Create the main body of the domino
-    const bodyGeometry = new THREE.BoxGeometry(width, depth, height);
-    const bodyMaterial = new THREE.MeshStandardMaterial({
-      color: 0xf5f5dc,
-      roughness: 0.5,
-      metalness: 0.1,
-    });
-    const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+    // Create the main body of the domino using shared geometry and material
+    const body = new THREE.Mesh(Domino.bodyGeometry, Domino.bodyMaterial);
     body.castShadow = true;
     body.receiveShadow = true;
     group.add(body);
 
-    // Create the dividing line in the middle
-    const lineGeometry = new THREE.BoxGeometry(
-      width + 0.02,
-      depth + 0.02,
-      0.02
-    );
-    const lineMaterial = new THREE.MeshStandardMaterial({
-      color: 0x333333,
-    });
-    const line = new THREE.Mesh(lineGeometry, lineMaterial);
+    // Create the dividing line in the middle using shared geometry and material
+    const line = new THREE.Mesh(Domino.lineGeometry, Domino.lineMaterial);
     group.add(line);
 
     // Add pips to the left half
@@ -50,18 +48,14 @@ export class Domino {
 
   addPips(group, count, zPosition, dominoWidth, dominoDepth) {
     const pipRadius = 0.08;
-    const pipGeometry = new THREE.SphereGeometry(pipRadius, 16, 16);
-    const pipMaterial = new THREE.MeshStandardMaterial({
-      color: 0x222222,
-    });
-
     const spacing = 0.25;
 
     // Define pip positions based on count (0-6)
     const pipPositions = this.getPipPositions(count, spacing);
 
     pipPositions.forEach((pos) => {
-      const pip = new THREE.Mesh(pipGeometry, pipMaterial);
+      // Use shared geometry and material
+      const pip = new THREE.Mesh(Domino.pipGeometry, Domino.pipMaterial);
       pip.position.set(
         pos.x,
         dominoDepth / 2 + pipRadius / 2,
@@ -134,5 +128,31 @@ export class Domino {
 
   getMesh() {
     return this.mesh;
+  }
+
+  dispose() {
+    // Since we're using shared geometries and materials, we don't dispose them here
+    // Just remove all references to allow garbage collection of the mesh
+    this.mesh.traverse((child) => {
+      if (child.geometry) {
+        // Geometry is shared, don't dispose
+        child.geometry = null;
+      }
+      if (child.material) {
+        // Material is shared, don't dispose
+        child.material = null;
+      }
+    });
+    this.mesh = null;
+  }
+
+  // Static method to dispose shared resources when completely done with all dominoes
+  static disposeSharedResources() {
+    if (Domino.bodyGeometry) Domino.bodyGeometry.dispose();
+    if (Domino.bodyMaterial) Domino.bodyMaterial.dispose();
+    if (Domino.lineGeometry) Domino.lineGeometry.dispose();
+    if (Domino.lineMaterial) Domino.lineMaterial.dispose();
+    if (Domino.pipGeometry) Domino.pipGeometry.dispose();
+    if (Domino.pipMaterial) Domino.pipMaterial.dispose();
   }
 }

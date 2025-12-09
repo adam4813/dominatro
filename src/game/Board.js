@@ -35,6 +35,7 @@ export class Board {
     if (index > -1) {
       this.dominoes.splice(index, 1);
       this.scene.remove(domino.getMesh());
+      domino.dispose();
     }
   }
 
@@ -45,6 +46,7 @@ export class Board {
   clear() {
     this.dominoes.forEach((domino) => {
       this.scene.remove(domino.getMesh());
+      domino.dispose();
     });
     this.dominoes = [];
   }
