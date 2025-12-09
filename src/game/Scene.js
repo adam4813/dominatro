@@ -57,9 +57,28 @@ export class Scene {
 
   setupControls() {
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
+
+    // Disable rotation
     this.controls.enableRotate = false;
+
+    // Enable panning for both mouse and touch
+    this.controls.enablePan = true;
+    this.controls.screenSpacePanning = true;
+
+    // Enable zooming for both mouse wheel and pinch
+    this.controls.enableZoom = true;
+
+    // Touch controls configuration
+    this.controls.touches = {
+      ONE: THREE.TOUCH.PAN, // One finger drag to pan
+      TWO: THREE.TOUCH.DOLLY_PAN, // Two finger pinch to zoom, drag to pan
+    };
+
+    // Damping for smooth controls
     this.controls.enableDamping = true;
     this.controls.dampingFactor = 0.05;
+
+    // Zoom limits
     this.controls.minDistance = 5;
     this.controls.maxDistance = 30;
   }

@@ -95,8 +95,16 @@ npm run format
 
 ### Camera Controls
 
+**Desktop:**
+
 - **Right click + drag** (or **Middle click + drag**) - Pan the camera
 - **Mouse wheel** - Zoom in/out
+
+**Mobile/Touch:**
+
+- **One finger drag** - Pan the camera
+- **Two finger pinch** - Zoom in/out
+- **Two finger drag** - Pan the camera
 
 ## Deployment
 
