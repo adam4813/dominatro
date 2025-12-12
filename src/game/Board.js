@@ -66,6 +66,52 @@ export class Board {
     return this.hud;
   }
 
+  /**
+   * Update score and refresh HUD
+   * @param {number} points - Points to add
+   */
+  addScore(points) {
+    this.gameState.addScore(points);
+    if (this.hud) {
+      this.hud.updateScore();
+    }
+  }
+
+  /**
+   * Deal tiles from bone pile to player rack and refresh HUD
+   * @param {number} count - Number of tiles to deal
+   */
+  dealTilesToRack(count) {
+    const dealtTiles = this.gameState.dealToRack(count);
+    if (this.hud) {
+      this.hud.updateBonePile();
+      this.hud.updateRack();
+    }
+    return dealtTiles;
+  }
+
+  /**
+   * Play a tile from rack to board and refresh HUD
+   * @param {number} rackIndex - Index of tile in rack
+   */
+  playTile(rackIndex) {
+    const tile = this.gameState.playTileFromRack(rackIndex);
+    if (tile && this.hud) {
+      this.hud.updateRack();
+    }
+    return tile;
+  }
+
+  /**
+   * Decrement pulls and refresh HUD
+   */
+  decrementPulls() {
+    this.gameState.decrementPulls();
+    if (this.hud) {
+      this.hud.updateProgression();
+    }
+  }
+
   clear() {
     this.dominoes.forEach((domino) => {
       this.scene.remove(domino.getMesh());
