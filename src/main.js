@@ -20,11 +20,23 @@ class Game {
     app.appendChild(this.scene.getCanvas());
 
     // Setup the game
+    this.initializeGame();
     this.setupRack();
     this.setupInteractionCallbacks();
 
     // Start animation loop
     this.animate();
+  }
+
+  initializeGame() {
+    // Shuffle the bone pile
+    this.gameState.shuffle();
+
+    // Deal 7 tiles to player rack for testing placement
+    this.gameState.dealToRack(7);
+
+    console.log('Game: Dealt 7 tiles to rack');
+    console.log('Game: Remaining bone pile size:', this.gameState.getBonePileSize());
   }
 
   setupRack() {
@@ -35,7 +47,7 @@ class Game {
     const rackY = 0.1;
 
     rack.forEach((dominoData, index) => {
-      const domino = new Domino(dominoData.leftPips, dominoData.rightPips);
+      const domino = new Domino(dominoData.left, dominoData.right);
       const x = rackStartX + index * 1.5;
       domino.setPosition(x, rackY, rackZ);
 

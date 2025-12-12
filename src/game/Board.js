@@ -18,7 +18,7 @@ export class Board {
 
   /**
    * Check if a domino can be legally placed on the specified side
-   * @param {Object} dominoData - Object with leftPips and rightPips
+   * @param {Object} dominoData - Object with left and right properties
    * @param {string} side - 'left' or 'right'
    * @returns {boolean} - True if placement is valid
    */
@@ -33,10 +33,10 @@ export class Board {
 
     // Check if domino matches the open end (considering it can be flipped)
     const matches =
-      dominoData.leftPips === openEnd || dominoData.rightPips === openEnd;
+      dominoData.left === openEnd || dominoData.right === openEnd;
 
     console.log(
-      `Board: Checking placement on ${side} side. Open end: ${openEnd}, Domino: [${dominoData.leftPips}|${dominoData.rightPips}], Valid: ${matches}`
+      `Board: Checking placement on ${side} side. Open end: ${openEnd}, Domino: [${dominoData.left}|${dominoData.right}], Valid: ${matches}`
     );
 
     return matches;
@@ -44,7 +44,7 @@ export class Board {
 
   /**
    * Place a domino on the board chain
-   * @param {Object} dominoData - Object with leftPips and rightPips
+   * @param {Object} dominoData - Object with left and right properties
    * @param {string} side - 'left' or 'right'
    * @returns {boolean} - True if placement succeeded
    */
@@ -55,37 +55,37 @@ export class Board {
     }
 
     // Determine the correct orientation for the domino
-    let leftPips = dominoData.leftPips;
-    let rightPips = dominoData.rightPips;
+    let left = dominoData.left;
+    let right = dominoData.right;
 
     if (this.chain.length === 0) {
       // First domino - add to chain and set open ends
       console.log('Board: Placing first domino');
-      this.chain.push({ leftPips, rightPips });
-      this.openEnds.left = leftPips;
-      this.openEnds.right = rightPips;
+      this.chain.push({ left, right });
+      this.openEnds.left = left;
+      this.openEnds.right = right;
     } else if (side === 'left') {
       // Placing on left - need to match with current left end
       // The right pip of the new domino should match the current left end
       // The left pip of the new domino becomes the new left end
-      if (leftPips === this.openEnds.left) {
-        // leftPips matches, so flip the domino
-        [leftPips, rightPips] = [rightPips, leftPips];
+      if (left === this.openEnds.left) {
+        // left matches, so flip the domino
+        [left, right] = [right, left];
       }
-      // Now rightPips should match openEnds.left
-      this.chain.unshift({ leftPips, rightPips });
-      this.openEnds.left = leftPips; // The left pip of the placed domino is the new open end
+      // Now right should match openEnds.left
+      this.chain.unshift({ left, right });
+      this.openEnds.left = left; // The left pip of the placed domino is the new open end
     } else {
       // Placing on right - need to match with current right end
       // The left pip of the new domino should match the current right end
       // The right pip of the new domino becomes the new right end
-      if (rightPips === this.openEnds.right) {
-        // rightPips matches, so flip the domino
-        [leftPips, rightPips] = [rightPips, leftPips];
+      if (right === this.openEnds.right) {
+        // right matches, so flip the domino
+        [left, right] = [right, left];
       }
-      // Now leftPips should match openEnds.right
-      this.chain.push({ leftPips, rightPips });
-      this.openEnds.right = rightPips; // The right pip of the placed domino is the new open end
+      // Now left should match openEnds.right
+      this.chain.push({ left, right });
+      this.openEnds.right = right; // The right pip of the placed domino is the new open end
     }
 
     // Remove from rack if gameState is available
@@ -127,7 +127,7 @@ export class Board {
     const startX = -totalWidth / 2;
 
     this.chain.forEach((dominoData, index) => {
-      const domino = new Domino(dominoData.leftPips, dominoData.rightPips);
+      const domino = new Domino(dominoData.left, dominoData.right);
       const x = startX + index * this.dominoSpacing;
       domino.setPosition(x, this.boardYPosition, this.boardZPosition);
       this.chainDominoes.push(domino);
