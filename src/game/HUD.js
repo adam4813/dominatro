@@ -19,32 +19,36 @@ export class HUD {
   }
 
   createHUD() {
-    // Create score panel
+    // Create score panel (top-left)
     const scoreCanvas = this.createCanvasTexture(200, 120);
     this.canvases.score = scoreCanvas;
     this.drawScorePanel(scoreCanvas.context, 0);
-    const scoreSprite = this.createSprite(scoreCanvas.canvas, -7, 6);
+    const scoreSprite = this.createSprite(scoreCanvas.canvas, -8, 7.5);
     this.sprites.push(scoreSprite);
 
-    // Create progression panel
+    // Create progression panel (top-center)
     const progressionCanvas = this.createCanvasTexture(280, 120);
     this.canvases.progression = progressionCanvas;
     this.drawProgressionPanel(progressionCanvas.context, 1, 5, 100);
-    const progressionSprite = this.createSprite(progressionCanvas.canvas, 0, 6);
+    const progressionSprite = this.createSprite(
+      progressionCanvas.canvas,
+      0,
+      7.5
+    );
     this.sprites.push(progressionSprite);
 
-    // Create bone pile panel
+    // Create bone pile panel (top-right)
     const bonePileCanvas = this.createCanvasTexture(200, 120);
     this.canvases.bonePile = bonePileCanvas;
     this.drawBonePilePanel(bonePileCanvas.context, 28);
-    const bonePileSprite = this.createSprite(bonePileCanvas.canvas, 7, 6);
+    const bonePileSprite = this.createSprite(bonePileCanvas.canvas, 8, 7.5);
     this.sprites.push(bonePileSprite);
 
-    // Create rack panel
+    // Create rack panel (bottom)
     const rackCanvas = this.createCanvasTexture(800, 200);
     this.canvases.rack = rackCanvas;
     this.drawRackPanel(rackCanvas.context, []);
-    const rackSprite = this.createSprite(rackCanvas.canvas, 0, -6);
+    const rackSprite = this.createSprite(rackCanvas.canvas, 0, -9);
     rackSprite.scale.set(8, 2, 1);
     this.sprites.push(rackSprite);
 
