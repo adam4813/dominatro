@@ -1,11 +1,13 @@
 import { Domino } from './Domino.js';
 import { GameState } from './GameState.js';
+import { HUD } from './HUD.js';
 
 export class Board {
   constructor(scene) {
     this.scene = scene;
     this.dominoes = [];
     this.gameState = new GameState();
+    this.hud = null;
     this.initializeGame();
   }
 
@@ -20,6 +22,9 @@ export class Board {
     const dealtTiles = this.gameState.dealToRack(5);
     console.log('Dealt tiles to rack:', dealtTiles);
     console.log('Remaining bone pile size:', this.gameState.getBonePileSize());
+
+    // Initialize HUD
+    this.hud = new HUD(this.gameState);
 
     // Display the player's rack
     this.displayPlayerRack();
@@ -57,11 +62,23 @@ export class Board {
     return this.dominoes;
   }
 
+  getHUD() {
+    return this.hud;
+  }
+
   clear() {
     this.dominoes.forEach((domino) => {
       this.scene.remove(domino.getMesh());
       domino.dispose();
     });
     this.dominoes = [];
+  }
+
+  destroy() {
+    this.clear();
+    if (this.hud) {
+      this.hud.destroy();
+      this.hud = null;
+    }
   }
 }

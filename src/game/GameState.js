@@ -103,4 +103,34 @@ export class GameState {
   getPlayerRackSize() {
     return this.playerRack.length;
   }
+
+  /**
+   * Add points to the current score
+   * @param {number} points - Points to add
+   */
+  addScore(points) {
+    this.score += points;
+  }
+
+  /**
+   * Decrement pulls remaining
+   */
+  decrementPulls() {
+    if (this.pullsRemaining > 0) {
+      this.pullsRemaining--;
+    }
+  }
+
+  /**
+   * Place a tile from the rack onto the board
+   * @param {number} rackIndex - Index of tile in player's rack
+   */
+  playTileFromRack(rackIndex) {
+    if (rackIndex >= 0 && rackIndex < this.playerRack.length) {
+      const tile = this.playerRack.splice(rackIndex, 1)[0];
+      this.board.push(tile);
+      return tile;
+    }
+    return null;
+  }
 }
