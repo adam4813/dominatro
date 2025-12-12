@@ -95,7 +95,7 @@ class Game {
         boardZ,
         isValid,
         (side, valid) =>
-          this.handlePlacementZoneClick('left', valid, dominoData)
+          this.handlePlacementZoneClick('center', valid, dominoData)
       );
       console.log('Game: Showing center placement zone (board empty)');
       return;
@@ -140,8 +140,11 @@ class Game {
 
     console.log(`Game: Placing domino on ${side} side`);
 
+    // For center placement (first domino), treat it as left for consistency
+    const actualSide = side === 'center' ? 'left' : side;
+
     // Place the domino on the board
-    const success = this.board.placeDomino(dominoData, side);
+    const success = this.board.placeDomino(dominoData, actualSide);
 
     if (success) {
       // Remove domino from rack visually
