@@ -124,5 +124,9 @@ export class Scene {
     window.removeEventListener('resize', this.handleResize);
     this.renderer.dispose();
     this.controls.dispose();
+    if (this.ground) {
+      this.ground.geometry.dispose();
+      this.ground.material.dispose();
+    }
   }
 }

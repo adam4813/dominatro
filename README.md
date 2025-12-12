@@ -25,7 +25,7 @@ Dominatro is inspired by the roguelike deck-builder Balatro, but uses dominoes i
 
 ### Prerequisites
 
-- Node.js (v18 or higher)
+- Node.js (v22 or higher)
 - npm or yarn
 
 ### Installation
