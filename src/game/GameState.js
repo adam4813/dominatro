@@ -4,6 +4,7 @@ export class GameState {
     this.playerRack = [];
     this.board = [];
     this.score = 0;
+    this.totalPulls = 5;
     this.pullsRemaining = 5;
     this.targetScore = 100;
 
@@ -96,6 +97,10 @@ export class GameState {
     return this.targetScore;
   }
 
+  getTotalPulls() {
+    return this.totalPulls;
+  }
+
   getBonePileSize() {
     return this.bonePile.length;
   }
@@ -109,6 +114,9 @@ export class GameState {
    * @param {number} points - Points to add
    */
   addScore(points) {
+    if (typeof points !== 'number' || !Number.isFinite(points) || points < 0) {
+      throw new Error('Points must be a non-negative number');
+    }
     this.score += points;
   }
 

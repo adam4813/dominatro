@@ -86,6 +86,9 @@ export class Board {
    * @param {number} count - Number of tiles to deal
    */
   dealTilesToRack(count) {
+    if (typeof count !== 'number' || !Number.isFinite(count) || count < 0) {
+      throw new Error('Count must be a non-negative number');
+    }
     const dealtTiles = this.gameState.dealToRack(count);
     if (this.hud) {
       this.hud.updateBonePile();
