@@ -66,20 +66,26 @@ export class Board {
       this.openEnds.right = rightPips;
     } else if (side === 'left') {
       // Placing on left - need to match with current left end
-      // If rightPips matches the open end, flip the domino
-      if (rightPips === this.openEnds.left) {
+      // The right pip of the new domino should match the current left end
+      // The left pip of the new domino becomes the new left end
+      if (leftPips === this.openEnds.left) {
+        // leftPips matches, so flip the domino
         [leftPips, rightPips] = [rightPips, leftPips];
       }
+      // Now rightPips should match openEnds.left
       this.chain.unshift({ leftPips, rightPips });
-      this.openEnds.left = leftPips;
+      this.openEnds.left = leftPips; // The left pip of the placed domino is the new open end
     } else {
       // Placing on right - need to match with current right end
-      // If leftPips matches the open end, flip the domino
-      if (leftPips === this.openEnds.right) {
+      // The left pip of the new domino should match the current right end
+      // The right pip of the new domino becomes the new right end
+      if (rightPips === this.openEnds.right) {
+        // rightPips matches, so flip the domino
         [leftPips, rightPips] = [rightPips, leftPips];
       }
+      // Now leftPips should match openEnds.right
       this.chain.push({ leftPips, rightPips });
-      this.openEnds.right = rightPips;
+      this.openEnds.right = rightPips; // The right pip of the placed domino is the new open end
     }
 
     // Remove from rack if gameState is available

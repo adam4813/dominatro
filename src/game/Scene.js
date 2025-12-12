@@ -298,25 +298,25 @@ export class Scene {
   }
 
   createPlacementZone(side, x, z, isValid, onClickCallback) {
-    const geometry = new THREE.BoxGeometry(1.2, 0.3, 2.2);
+    const geometry = new THREE.BoxGeometry(1.5, 0.5, 2.5);
     const color = isValid ? 0x00ff00 : 0xff0000;
     const material = new THREE.MeshStandardMaterial({
       color: color,
       emissive: color,
-      emissiveIntensity: 0.5,
+      emissiveIntensity: 0.6,
       transparent: true,
-      opacity: 0.4,
+      opacity: 0.5,
     });
 
     const mesh = new THREE.Mesh(geometry, material);
-    mesh.position.set(x, 0.15, z);
+    mesh.position.set(x, 0.25, z); // Raised slightly higher
     this.scene.add(mesh);
 
     const zone = { mesh, side, isValid, onClickCallback };
     this.placementZones.push(zone);
 
     console.log(
-      `Scene: Created ${isValid ? 'valid (green)' : 'invalid (red)'} placement zone for ${side} at position (${x}, 0.15, ${z})`
+      `Scene: Created ${isValid ? 'valid (green)' : 'invalid (red)'} placement zone for ${side} at position (${x}, 0.25, ${z})`
     );
 
     return zone;
