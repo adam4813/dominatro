@@ -61,6 +61,7 @@ export class GameState {
 
   /**
    * Reset the game state to initial conditions
+   * Note: This does not shuffle the bone pile. Call shuffle() separately if needed.
    */
   reset() {
     this.playerRack = [];
