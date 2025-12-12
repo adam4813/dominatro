@@ -23,6 +23,8 @@ export class Scene {
       0.1,
       1000
     );
+    // Camera positioned for top-down view (0, 15, 0)
+    // This initial position should be maintained as the default view
     this.camera.position.set(0, 15, 0);
     this.camera.lookAt(0, 0, 0);
   }

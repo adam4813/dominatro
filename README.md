@@ -95,6 +95,8 @@ npm run format
 
 ### Camera Controls
 
+The game uses a top-down camera view positioned at `(0, 15, 0)` looking down at the game board. This camera position should be maintained as the default initial view.
+
 **Desktop:**
 
 - **Right click + drag** (or **Middle click + drag**) - Pan the camera

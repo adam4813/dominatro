@@ -1,24 +1,38 @@
 import { Domino } from './Domino.js';
+import { GameState } from './GameState.js';
 
 export class Board {
   constructor(scene) {
     this.scene = scene;
     this.dominoes = [];
-    this.initializeSampleDominoes();
+    this.gameState = new GameState();
+    this.initializeGame();
   }
 
-  initializeSampleDominoes() {
-    // Create a few sample dominoes to demonstrate the rendering
-    const sampleDominoes = [
-      { left: 6, right: 6, x: -4, z: 0 },
-      { left: 5, right: 4, x: -2, z: 0 },
-      { left: 3, right: 2, x: 0, z: 0 },
-      { left: 2, right: 1, x: 2, z: 0 },
-      { left: 1, right: 0, x: 4, z: 0 },
-    ];
+  initializeGame() {
+    // Initialize game state
+    console.log('Initial bone pile size:', this.gameState.getBonePileSize());
 
-    sampleDominoes.forEach((data) => {
-      this.addDomino(data.left, data.right, data.x, data.z);
+    // Shuffle the bone pile
+    this.gameState.shuffle();
+
+    // Deal 5 tiles to player rack
+    const dealtTiles = this.gameState.dealToRack(5);
+    console.log('Dealt tiles to rack:', dealtTiles);
+    console.log('Remaining bone pile size:', this.gameState.getBonePileSize());
+
+    // Display the player's rack
+    this.displayPlayerRack();
+  }
+
+  displayPlayerRack() {
+    const playerRack = this.gameState.getPlayerRack();
+    const spacing = 1.5; // Space between dominoes
+    const startX = (-(playerRack.length - 1) * spacing) / 2; // Center the rack
+
+    playerRack.forEach((tile, index) => {
+      const x = startX + index * spacing;
+      this.addDomino(tile.left, tile.right, x, 0);
     });
   }
 
