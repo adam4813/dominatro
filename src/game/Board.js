@@ -24,7 +24,11 @@ export class Board {
     console.log('Remaining bone pile size:', this.gameState.getBonePileSize());
 
     // Initialize HUD
-    this.hud = new HUD(this.gameState);
+    this.hud = new HUD(
+      this.gameState,
+      this.scene.getScene(),
+      this.scene.getCamera()
+    );
 
     // Display the player's rack
     this.displayPlayerRack();

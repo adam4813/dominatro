@@ -122,6 +122,14 @@ export class Scene {
     return this.renderer.domElement;
   }
 
+  getScene() {
+    return this.scene;
+  }
+
+  getCamera() {
+    return this.camera;
+  }
+
   destroy() {
     window.removeEventListener('resize', this.handleResize);
     this.renderer.dispose();
