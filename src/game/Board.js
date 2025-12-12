@@ -32,8 +32,7 @@ export class Board {
     const openEnd = side === 'left' ? this.openEnds.left : this.openEnds.right;
 
     // Check if domino matches the open end (considering it can be flipped)
-    const matches =
-      dominoData.left === openEnd || dominoData.right === openEnd;
+    const matches = dominoData.left === openEnd || dominoData.right === openEnd;
 
     console.log(
       `Board: Checking placement on ${side} side. Open end: ${openEnd}, Domino: [${dominoData.left}|${dominoData.right}], Valid: ${matches}`
@@ -68,6 +67,7 @@ export class Board {
       // Placing on left - need to match with current left end
       // The right pip of the new domino should match the current left end
       // The left pip of the new domino becomes the new left end
+      // Note: For double dominoes (e.g., [3|3]), flipping doesn't change anything, which is correct
       if (left === this.openEnds.left) {
         // left matches, so flip the domino
         [left, right] = [right, left];
@@ -79,6 +79,7 @@ export class Board {
       // Placing on right - need to match with current right end
       // The left pip of the new domino should match the current right end
       // The right pip of the new domino becomes the new right end
+      // Note: For double dominoes (e.g., [3|3]), flipping doesn't change anything, which is correct
       if (right === this.openEnds.right) {
         // right matches, so flip the domino
         [left, right] = [right, left];
@@ -89,8 +90,27 @@ export class Board {
     }
 
     // Remove from rack if gameState is available
+    // Note: This removes from the data model (GameState.playerRack)
+    // Visual rack cleanup is handled separately in main.js
     if (this.gameState) {
-      this.gameState.removeDominoFromRack(dominoData);
+      const removed = this.gameState.removeDominoFromRack(dominoData);
+      if (!removed) {
+        console.error(
+          'Board: Failed to remove domino from rack. Aborting placement.'
+        );
+        // Rollback the chain modification
+        if (this.chain.length === 1) {
+          this.chain = [];
+          this.openEnds = { left: null, right: null };
+        } else if (side === 'left') {
+          this.chain.shift();
+          this.openEnds.left = this.chain[0].left;
+        } else {
+          this.chain.pop();
+          this.openEnds.right = this.chain[this.chain.length - 1].right;
+        }
+        return false;
+      }
     }
 
     // Re-render the entire board chain

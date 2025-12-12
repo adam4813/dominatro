@@ -4,6 +4,11 @@ import { Board } from './game/Board.js';
 import { GameState } from './game/GameState.js';
 import { Domino } from './game/Domino.js';
 
+// Constants for rack layout
+const RACK_SPACING = 1.5;
+const RACK_Z_POSITION = 4;
+const RACK_Y_POSITION = 0.1;
+
 class Game {
   constructor() {
     this.scene = new Scene();
@@ -36,20 +41,21 @@ class Game {
     this.gameState.dealToRack(7);
 
     console.log('Game: Dealt 7 tiles to rack');
-    console.log('Game: Remaining bone pile size:', this.gameState.getBonePileSize());
+    console.log(
+      'Game: Remaining bone pile size:',
+      this.gameState.getBonePileSize()
+    );
   }
 
   setupRack() {
     // Display player rack dominoes
     const rack = this.gameState.getPlayerRack();
-    const rackStartX = (-(rack.length - 1) * 1.5) / 2;
-    const rackZ = 4; // Position rack in front of board
-    const rackY = 0.1;
+    const rackStartX = (-(rack.length - 1) * RACK_SPACING) / 2;
 
     rack.forEach((dominoData, index) => {
       const domino = new Domino(dominoData.left, dominoData.right);
-      const x = rackStartX + index * 1.5;
-      domino.setPosition(x, rackY, rackZ);
+      const x = rackStartX + index * RACK_SPACING;
+      domino.setPosition(x, RACK_Y_POSITION, RACK_Z_POSITION);
 
       // Store domino with its data for later reference
       this.rackDominoes.push({
@@ -94,7 +100,12 @@ class Game {
     // Clear existing zones
     this.scene.clearPlacementZones();
 
-    const openEnds = this.board.getOpenEnds();
+    // Defensive null check
+    if (!this.board || !this.board.chain) {
+      console.error('Game: Board not properly initialized');
+      return;
+    }
+
     const boardZ = this.board.boardZPosition;
     const spacing = this.board.dominoSpacing;
 
@@ -109,7 +120,6 @@ class Game {
         (side, valid) =>
           this.handlePlacementZoneClick('center', valid, dominoData)
       );
-      console.log('Game: Showing center placement zone (board empty)');
       return;
     }
 
@@ -140,13 +150,14 @@ class Game {
     );
 
     console.log(
-      `Game: Placement zones shown - Left: ${leftValid ? 'valid' : 'invalid'} at x=${leftX}, Right: ${rightValid ? 'valid' : 'invalid'} at x=${rightX}, z=${boardZ}`
+      `Game: Placement zones shown - Left: ${leftValid ? 'valid' : 'invalid'} at x=${leftX}, Right: ${rightValid ? 'valid' : 'invalid'} at x=${rightX}`
     );
   }
 
   handlePlacementZoneClick(side, valid, dominoData) {
     if (!valid) {
-      console.log('Game: Invalid placement attempt - zone is red');
+      console.log('Game: Invalid placement attempt - deselecting domino');
+      this.scene.deselectDomino();
       return;
     }
 
@@ -164,13 +175,17 @@ class Game {
 
       // Deselect the domino
       this.scene.deselectDomino();
-
-      console.log('Game: Domino placed successfully');
     } else {
       console.log('Game: Placement failed');
     }
   }
 
+  /**
+   * Remove a domino from the visual rack display
+   * Note: The domino data is removed from GameState.playerRack by Board.placeDomino
+   * This method handles the visual/Three.js representation cleanup
+   * @param {Object} dominoData - The domino data object to remove from visual rack
+   */
   removeDominoFromRack(dominoData) {
     const index = this.rackDominoes.findIndex((rd) => rd.data === dominoData);
 
@@ -189,13 +204,16 @@ class Game {
   }
 
   repositionRack() {
-    const rackStartX = (-(this.rackDominoes.length - 1) * 1.5) / 2;
-    const rackZ = 4;
-    const rackY = 0.1;
+    // Early return if rack is empty
+    if (this.rackDominoes.length === 0) {
+      return;
+    }
+
+    const rackStartX = (-(this.rackDominoes.length - 1) * RACK_SPACING) / 2;
 
     this.rackDominoes.forEach((rackDomino, index) => {
-      const x = rackStartX + index * 1.5;
-      rackDomino.domino.setPosition(x, rackY, rackZ);
+      const x = rackStartX + index * RACK_SPACING;
+      rackDomino.domino.setPosition(x, RACK_Y_POSITION, RACK_Z_POSITION);
     });
   }
 

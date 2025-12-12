@@ -20,13 +20,32 @@ export class Scene {
     this.rackDominoes = []; // Domino objects in the rack
     this.placementZones = []; // Placement zone objects
 
+    /**
+     * Callback invoked when a domino is selected
+     * @callback onDominoSelectedCallback
+     * @param {Object} dominoData - The data of the selected domino {left, right, type}
+     */
+    this.onDominoSelectedCallback = null;
+
+    /**
+     * Callback invoked when a domino is deselected
+     * @callback onDominoDeselectedCallback
+     */
+    this.onDominoDeselectedCallback = null;
+
+    // Track mouse position for click vs drag detection
+    this.mouseDownPosition = null;
+    this.isDragging = false;
+
     this.handleResize = this.handleResize.bind(this);
     this.handleMouseMove = this.handleMouseMove.bind(this);
+    this.handleMouseDown = this.handleMouseDown.bind(this);
     this.handleMouseClick = this.handleMouseClick.bind(this);
     this.handleKeyDown = this.handleKeyDown.bind(this);
 
     window.addEventListener('resize', this.handleResize);
     window.addEventListener('mousemove', this.handleMouseMove);
+    window.addEventListener('mousedown', this.handleMouseDown);
     window.addEventListener('click', this.handleMouseClick);
     window.addEventListener('keydown', this.handleKeyDown);
   }
@@ -119,10 +138,30 @@ export class Scene {
     this.mouse = new THREE.Vector2();
   }
 
+  handleMouseDown(event) {
+    // Record mouse position to detect drag vs click
+    this.mouseDownPosition = {
+      x: event.clientX,
+      y: event.clientY,
+    };
+    this.isDragging = false;
+  }
+
   handleMouseMove(event) {
     // Calculate mouse position in normalized device coordinates (-1 to +1)
     this.mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
     this.mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+    // Detect if user is dragging (for OrbitControls)
+    if (this.mouseDownPosition) {
+      const dx = event.clientX - this.mouseDownPosition.x;
+      const dy = event.clientY - this.mouseDownPosition.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      if (distance > 5) {
+        // 5px threshold
+        this.isDragging = true;
+      }
+    }
 
     // Update raycaster
     this.raycaster.setFromCamera(this.mouse, this.camera);
@@ -151,18 +190,16 @@ export class Scene {
   }
 
   handleMouseClick(event) {
+    // Ignore clicks that are actually drags (from OrbitControls)
+    if (this.isDragging) {
+      this.isDragging = false;
+      this.mouseDownPosition = null;
+      return;
+    }
+
     // Update mouse position first
     this.mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
     this.mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-
-    console.log(
-      'Scene: Click detected at',
-      event.clientX,
-      event.clientY,
-      'normalized:',
-      this.mouse.x,
-      this.mouse.y
-    );
 
     // Update raycaster
     this.raycaster.setFromCamera(this.mouse, this.camera);
@@ -170,19 +207,7 @@ export class Scene {
     // Check if clicking on a placement zone
     if (this.selectedDomino && this.placementZones.length > 0) {
       const zoneMeshes = this.placementZones.map((z) => z.mesh);
-      console.log('Scene: Checking placement zones, count:', zoneMeshes.length);
       const zoneIntersects = this.raycaster.intersectObjects(zoneMeshes, false);
-
-      console.log(
-        'Scene: Checking placement zones, intersections:',
-        zoneIntersects.length
-      );
-      if (zoneIntersects.length > 0) {
-        console.log(
-          'Scene: Clicked on zone at distance:',
-          zoneIntersects[0].distance
-        );
-      }
 
       if (zoneIntersects.length > 0) {
         const clickedZone = this.placementZones.find(
@@ -197,9 +222,7 @@ export class Scene {
 
     // Check for clicking on rack dominoes
     const rackMeshes = this.rackDominoes.map((d) => d.mesh);
-    console.log('Scene: Checking rack dominoes, count:', rackMeshes.length);
     const intersects = this.raycaster.intersectObjects(rackMeshes, true);
-    console.log('Scene: Rack intersections:', intersects.length);
 
     if (intersects.length > 0) {
       const clickedMesh = this.findParentDomino(
@@ -213,6 +236,10 @@ export class Scene {
       // Clicked on empty space - deselect
       this.deselectDomino();
     }
+
+    // Reset drag tracking
+    this.mouseDownPosition = null;
+    this.isDragging = false;
   }
 
   handleKeyDown(event) {
@@ -277,6 +304,15 @@ export class Scene {
   highlightDomino(dominoMesh, color, intensity) {
     dominoMesh.traverse((child) => {
       if (child.isMesh && child.material) {
+        // Clone material if it's shared (static) to avoid affecting other dominoes
+        if (
+          child.material === child.constructor.bodyMaterial ||
+          child.material === child.constructor.lineMaterial ||
+          child.material === child.constructor.pipMaterial
+        ) {
+          child.material = child.material.clone();
+        }
+
         // Store original material properties if not already stored
         if (!child.userData.originalEmissive) {
           child.userData.originalEmissive = child.material.emissive.clone();
@@ -295,11 +331,23 @@ export class Scene {
         child.material.emissive.copy(child.userData.originalEmissive);
         child.material.emissiveIntensity =
           child.userData.originalEmissiveIntensity;
+        // Clean up userData to prevent memory leaks
+        delete child.userData.originalEmissive;
+        delete child.userData.originalEmissiveIntensity;
       }
     });
   }
 
   createPlacementZone(side, x, z, isValid, onClickCallback) {
+    // Validate side parameter
+    const validSides = ['left', 'right', 'center'];
+    if (!validSides.includes(side)) {
+      console.error(
+        `Scene: Invalid side parameter "${side}". Must be one of: ${validSides.join(', ')}`
+      );
+      return null;
+    }
+
     const geometry = new THREE.BoxGeometry(1.5, 0.5, 2.5);
     const color = isValid ? 0x00ff00 : 0xff0000;
     const material = new THREE.MeshStandardMaterial({
@@ -316,10 +364,6 @@ export class Scene {
 
     const zone = { mesh, side, isValid, onClickCallback };
     this.placementZones.push(zone);
-
-    console.log(
-      `Scene: Created ${isValid ? 'valid (green)' : 'invalid (red)'} placement zone for ${side} at position (${x}, 0.25, ${z})`
-    );
 
     return zone;
   }
@@ -359,6 +403,7 @@ export class Scene {
   destroy() {
     window.removeEventListener('resize', this.handleResize);
     window.removeEventListener('mousemove', this.handleMouseMove);
+    window.removeEventListener('mousedown', this.handleMouseDown);
     window.removeEventListener('click', this.handleMouseClick);
     window.removeEventListener('keydown', this.handleKeyDown);
     this.renderer.dispose();
