@@ -23,7 +23,9 @@ export class Scene {
       0.1,
       1000
     );
-    this.camera.position.set(0, 15, 0);
+    // Position camera for a better view of a rack of dominoes
+    // Slightly elevated and angled to mimic looking at a hand
+    this.camera.position.set(0, 8, 8);
     this.camera.lookAt(0, 0, 0);
   }
 
