@@ -11,9 +11,24 @@ export class Scene {
     this.setupLights();
     this.setupControls();
     this.setupGround();
+    this.setupRaycaster();
+
+    // State for interaction
+    this.selectedDomino = null;
+    this.selectedDominoData = null;
+    this.hoveredObject = null;
+    this.rackDominoes = []; // Domino objects in the rack
+    this.placementZones = []; // Placement zone objects
 
     this.handleResize = this.handleResize.bind(this);
+    this.handleMouseMove = this.handleMouseMove.bind(this);
+    this.handleMouseClick = this.handleMouseClick.bind(this);
+    this.handleKeyDown = this.handleKeyDown.bind(this);
+
     window.addEventListener('resize', this.handleResize);
+    window.addEventListener('mousemove', this.handleMouseMove);
+    window.addEventListener('click', this.handleMouseClick);
+    window.addEventListener('keydown', this.handleKeyDown);
   }
 
   setupCamera() {
@@ -97,6 +112,225 @@ export class Scene {
     this.scene.add(this.ground);
   }
 
+  setupRaycaster() {
+    this.raycaster = new THREE.Raycaster();
+    this.mouse = new THREE.Vector2();
+  }
+
+  handleMouseMove(event) {
+    // Calculate mouse position in normalized device coordinates (-1 to +1)
+    this.mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+    this.mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+    // Update raycaster
+    this.raycaster.setFromCamera(this.mouse, this.camera);
+
+    // Check for intersections with rack dominoes
+    const rackMeshes = this.rackDominoes.map((d) => d.mesh);
+    const intersects = this.raycaster.intersectObjects(rackMeshes, true);
+
+    // Reset previous hover state
+    if (this.hoveredObject && !this.selectedDomino) {
+      this.clearHighlight(this.hoveredObject);
+      this.hoveredObject = null;
+    }
+
+    // Highlight hovered domino (only if nothing is selected)
+    if (intersects.length > 0 && !this.selectedDomino) {
+      const hoveredMesh = this.findParentDomino(
+        intersects[0].object,
+        rackMeshes
+      );
+      if (hoveredMesh) {
+        this.hoveredObject = hoveredMesh;
+        this.highlightDomino(hoveredMesh, 0x88ccff, 0.3);
+      }
+    }
+  }
+
+  handleMouseClick(event) {
+    // Update mouse position first
+    this.mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+    this.mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+    console.log(
+      'Scene: Click detected at',
+      event.clientX,
+      event.clientY,
+      'normalized:',
+      this.mouse.x,
+      this.mouse.y
+    );
+
+    // Update raycaster
+    this.raycaster.setFromCamera(this.mouse, this.camera);
+
+    // Check if clicking on a placement zone
+    if (this.selectedDomino && this.placementZones.length > 0) {
+      const zoneMeshes = this.placementZones.map((z) => z.mesh);
+      console.log('Scene: Checking placement zones, count:', zoneMeshes.length);
+      const zoneIntersects = this.raycaster.intersectObjects(zoneMeshes, false);
+
+      console.log(
+        'Scene: Checking placement zones, intersections:',
+        zoneIntersects.length
+      );
+      if (zoneIntersects.length > 0) {
+        console.log(
+          'Scene: Clicked on zone at distance:',
+          zoneIntersects[0].distance
+        );
+      }
+
+      if (zoneIntersects.length > 0) {
+        const clickedZone = this.placementZones.find(
+          (z) => z.mesh === zoneIntersects[0].object
+        );
+        if (clickedZone && clickedZone.onClickCallback) {
+          clickedZone.onClickCallback(clickedZone.side, clickedZone.isValid);
+        }
+        return;
+      }
+    }
+
+    // Check for clicking on rack dominoes
+    const rackMeshes = this.rackDominoes.map((d) => d.mesh);
+    console.log('Scene: Checking rack dominoes, count:', rackMeshes.length);
+    const intersects = this.raycaster.intersectObjects(rackMeshes, true);
+    console.log('Scene: Rack intersections:', intersects.length);
+
+    if (intersects.length > 0) {
+      const clickedMesh = this.findParentDomino(
+        intersects[0].object,
+        rackMeshes
+      );
+      if (clickedMesh) {
+        this.selectDomino(clickedMesh);
+      }
+    } else {
+      // Clicked on empty space - deselect
+      this.deselectDomino();
+    }
+  }
+
+  handleKeyDown(event) {
+    if (event.key === 'Escape') {
+      this.deselectDomino();
+    }
+  }
+
+  findParentDomino(object, dominoMeshes) {
+    // Traverse up to find the parent domino group
+    let current = object;
+    while (current) {
+      if (dominoMeshes.includes(current)) {
+        return current;
+      }
+      current = current.parent;
+    }
+    return null;
+  }
+
+  selectDomino(dominoMesh) {
+    const dominoObj = this.rackDominoes.find((d) => d.mesh === dominoMesh);
+    if (!dominoObj) return;
+
+    // Deselect previous domino
+    if (this.selectedDomino && this.selectedDomino !== dominoMesh) {
+      this.clearHighlight(this.selectedDomino);
+    }
+
+    this.selectedDomino = dominoMesh;
+    this.selectedDominoData = dominoObj.data;
+
+    // Highlight selected domino
+    this.highlightDomino(dominoMesh, 0xffff00, 0.5);
+
+    console.log('Scene: Selected domino:', this.selectedDominoData);
+
+    // Notify callback if set
+    if (this.onDominoSelectedCallback) {
+      this.onDominoSelectedCallback(dominoObj.data);
+    }
+  }
+
+  deselectDomino() {
+    if (this.selectedDomino) {
+      this.clearHighlight(this.selectedDomino);
+      this.selectedDomino = null;
+      this.selectedDominoData = null;
+
+      console.log('Scene: Deselected domino');
+
+      // Clear placement zones
+      this.clearPlacementZones();
+
+      // Notify callback if set
+      if (this.onDominoDeselectedCallback) {
+        this.onDominoDeselectedCallback();
+      }
+    }
+  }
+
+  highlightDomino(dominoMesh, color, intensity) {
+    dominoMesh.traverse((child) => {
+      if (child.isMesh && child.material) {
+        // Store original material properties if not already stored
+        if (!child.userData.originalEmissive) {
+          child.userData.originalEmissive = child.material.emissive.clone();
+          child.userData.originalEmissiveIntensity =
+            child.material.emissiveIntensity || 0;
+        }
+        child.material.emissive.setHex(color);
+        child.material.emissiveIntensity = intensity;
+      }
+    });
+  }
+
+  clearHighlight(dominoMesh) {
+    dominoMesh.traverse((child) => {
+      if (child.isMesh && child.material && child.userData.originalEmissive) {
+        child.material.emissive.copy(child.userData.originalEmissive);
+        child.material.emissiveIntensity =
+          child.userData.originalEmissiveIntensity;
+      }
+    });
+  }
+
+  createPlacementZone(side, x, z, isValid, onClickCallback) {
+    const geometry = new THREE.BoxGeometry(1.2, 0.3, 2.2);
+    const color = isValid ? 0x00ff00 : 0xff0000;
+    const material = new THREE.MeshStandardMaterial({
+      color: color,
+      emissive: color,
+      emissiveIntensity: 0.5,
+      transparent: true,
+      opacity: 0.4,
+    });
+
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.position.set(x, 0.15, z);
+    this.scene.add(mesh);
+
+    const zone = { mesh, side, isValid, onClickCallback };
+    this.placementZones.push(zone);
+
+    console.log(
+      `Scene: Created ${isValid ? 'valid (green)' : 'invalid (red)'} placement zone for ${side} at position (${x}, 0.15, ${z})`
+    );
+
+    return zone;
+  }
+
+  clearPlacementZones() {
+    this.placementZones.forEach((zone) => {
+      this.scene.remove(zone.mesh);
+      zone.mesh.geometry.dispose();
+      zone.mesh.material.dispose();
+    });
+    this.placementZones = [];
+  }
+
   add(object) {
     this.scene.add(object);
   }
@@ -122,11 +356,15 @@ export class Scene {
 
   destroy() {
     window.removeEventListener('resize', this.handleResize);
+    window.removeEventListener('mousemove', this.handleMouseMove);
+    window.removeEventListener('click', this.handleMouseClick);
+    window.removeEventListener('keydown', this.handleKeyDown);
     this.renderer.dispose();
     this.controls.dispose();
     if (this.ground) {
       this.ground.geometry.dispose();
       this.ground.material.dispose();
     }
+    this.clearPlacementZones();
   }
 }
