@@ -23,9 +23,9 @@ export class Scene {
       0.1,
       1000
     );
-    // Position camera for a better view of a rack of dominoes
-    // Slightly elevated and angled to mimic looking at a hand
-    this.camera.position.set(0, 8, 8);
+    // Camera positioned for top-down view (0, 15, 0)
+    // This initial position should be maintained as the default view
+    this.camera.position.set(0, 15, 0);
     this.camera.lookAt(0, 0, 0);
   }
 
