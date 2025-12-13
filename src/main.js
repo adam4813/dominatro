@@ -107,7 +107,7 @@ class Game {
     }
 
     const boardZ = this.board.boardZPosition;
-    const spacing = this.board.dominoSpacing;
+    const isDouble = dominoData.left === dominoData.right;
 
     // If board is empty, show a single central placement zone
     if (this.board.chain.length === 0) {
@@ -118,16 +118,14 @@ class Game {
         boardZ,
         isValid,
         (side, valid) =>
-          this.handlePlacementZoneClick('center', valid, dominoData)
+          this.handlePlacementZoneClick('center', valid, dominoData),
+        isDouble
       );
       return;
     }
 
-    // Calculate positions for left and right zones
-    const chainLength = this.board.chain.length;
-    const totalWidth = (chainLength - 1) * spacing;
-    const leftX = -totalWidth / 2 - spacing;
-    const rightX = totalWidth / 2 + spacing;
+    // Get placement positions based on current chain
+    const { leftX, rightX } = this.board.getPlacementPositions();
 
     // Left placement zone
     const leftValid = this.board.isValidPlacement(dominoData, 'left');
@@ -136,7 +134,8 @@ class Game {
       leftX,
       boardZ,
       leftValid,
-      (side, valid) => this.handlePlacementZoneClick('left', valid, dominoData)
+      (side, valid) => this.handlePlacementZoneClick('left', valid, dominoData),
+      isDouble
     );
 
     // Right placement zone
@@ -146,7 +145,9 @@ class Game {
       rightX,
       boardZ,
       rightValid,
-      (side, valid) => this.handlePlacementZoneClick('right', valid, dominoData)
+      (side, valid) =>
+        this.handlePlacementZoneClick('right', valid, dominoData),
+      isDouble
     );
 
     console.log(

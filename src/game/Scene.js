@@ -1,5 +1,8 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { Domino } from './Domino.js';
+
+const BOARD_PADDING = 1; // Extra space around the domino placements
 
 export class Scene {
   constructor() {
@@ -117,11 +120,26 @@ export class Scene {
     // Zoom limits
     this.controls.minDistance = 5;
     this.controls.maxDistance = 30;
+
+    // Initial pan limits (match initial small ground size)
+    this.controls.minPan = new THREE.Vector3(-6, 0, -10);
+    this.controls.maxPan = new THREE.Vector3(6, 0, 10);
+  }
+
+  /**
+   * Update camera pan limits based on board width
+   * @param {number} minX - Minimum X position on the board
+   * @param {number} maxX - Maximum X position on the board
+   */
+  updatePanLimits(minX, maxX) {
+    const padding = 5; // Extra padding beyond the board edges
+    this.controls.minPan = new THREE.Vector3(minX - padding, 0, -10);
+    this.controls.maxPan = new THREE.Vector3(maxX + padding, 0, 10);
   }
 
   setupGround() {
-    // Create a table/ground surface
-    const groundGeometry = new THREE.PlaneGeometry(20, 20);
+    // Create a table/ground surface - start small, ~6 domino widths
+    const groundGeometry = new THREE.PlaneGeometry(12, 20);
     const groundMaterial = new THREE.MeshStandardMaterial({
       color: 0x1a3a1a,
       roughness: 0.8,
@@ -130,6 +148,70 @@ export class Scene {
     this.ground = new THREE.Mesh(groundGeometry, groundMaterial);
     this.ground.rotation.x = -Math.PI / 2;
     this.ground.receiveShadow = true;
+    this.scene.add(this.ground);
+
+    // Track ground boundaries to avoid shifting when expanding
+    this.groundMinX = -6;
+    this.groundMaxX = 6;
+  }
+
+  /**
+   * Update ground size based on board width
+   * Only expands on the side that needs it
+   * @param {number} minX - Minimum X position on the board
+   * @param {number} maxX - Maximum X position on the board
+   */
+  updateGroundSize(minX, maxX) {
+    const dominoWidth = 2; // Approximate horizontal domino width
+    const edgeBuffer = dominoWidth * BOARD_PADDING;
+
+    let needsUpdate = false;
+    let newMinX = this.groundMinX;
+    let newMaxX = this.groundMaxX;
+
+    // Check if we need to expand left
+    if (minX - edgeBuffer < this.groundMinX) {
+      newMinX = minX - edgeBuffer; // Add 2 extra to avoid constant resizing
+      needsUpdate = true;
+    }
+
+    // Check if we need to expand right
+    if (maxX + edgeBuffer > this.groundMaxX) {
+      newMaxX = maxX + edgeBuffer; // Add 2 extra to avoid constant resizing
+      needsUpdate = true;
+    }
+
+    if (!needsUpdate) {
+      return; // No expansion needed
+    }
+
+    // Update boundaries
+    this.groundMinX = newMinX;
+    this.groundMaxX = newMaxX;
+
+    // Calculate new dimensions
+    const newWidth = newMaxX - newMinX;
+    const depth = 20; // Keep depth constant
+    const centerX = (newMinX + newMaxX) / 2;
+
+    // Remove old ground
+    if (this.ground) {
+      this.scene.remove(this.ground);
+      this.ground.geometry.dispose();
+    }
+
+    // Create new ground with updated size
+    const groundGeometry = new THREE.PlaneGeometry(newWidth, depth);
+    const groundMaterial = new THREE.MeshStandardMaterial({
+      color: 0x1a3a1a,
+      roughness: 0.8,
+      metalness: 0.2,
+    });
+    this.ground = new THREE.Mesh(groundGeometry, groundMaterial);
+    this.ground.rotation.x = -Math.PI / 2;
+    this.ground.receiveShadow = true;
+    this.ground.position.set(centerX, 0, 0);
+
     this.scene.add(this.ground);
   }
 
@@ -306,9 +388,9 @@ export class Scene {
       if (child.isMesh && child.material) {
         // Clone material if it's shared (static) to avoid affecting other dominoes
         if (
-          child.material === child.constructor.bodyMaterial ||
-          child.material === child.constructor.lineMaterial ||
-          child.material === child.constructor.pipMaterial
+          child.material === Domino.bodyMaterial ||
+          child.material === Domino.lineMaterial ||
+          child.material === Domino.pipMaterial
         ) {
           child.material = child.material.clone();
         }
@@ -338,7 +420,7 @@ export class Scene {
     });
   }
 
-  createPlacementZone(side, x, z, isValid, onClickCallback) {
+  createPlacementZone(side, x, z, isValid, onClickCallback, isDouble = false) {
     // Validate side parameter
     const validSides = ['left', 'right', 'center'];
     if (!validSides.includes(side)) {
@@ -348,7 +430,11 @@ export class Scene {
       return null;
     }
 
-    const geometry = new THREE.BoxGeometry(1.5, 0.5, 2.5);
+    // Horizontal orientation for regular dominoes, vertical for doubles
+    // Swap dimensions for doubles to show vertical placement
+    const geometry = isDouble
+      ? new THREE.BoxGeometry(1.5, 0.5, 2.5)
+      : new THREE.BoxGeometry(2.5, 0.5, 1.5);
     const color = isValid ? 0x00ff00 : 0xff0000;
     const material = new THREE.MeshStandardMaterial({
       color: color,
