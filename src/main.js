@@ -83,6 +83,52 @@ class Game {
     this.scene.onDominoDeselectedCallback = () => {
       this.handleDominoDeselected();
     };
+
+    // Set up callback to check if flip is allowed
+    this.scene.canFlipDominoCallback = (dominoData) => {
+      return this.canFlipDomino(dominoData);
+    };
+
+    // Set up callback to get placement orientation
+    this.scene.getPlacementOrientationCallback = (dominoData, side) => {
+      return this.board.getPlacementOrientation(dominoData, side);
+    };
+  }
+
+  canFlipDomino(dominoData) {
+    // If board is empty, flipping is always allowed (doesn't matter)
+    if (this.board.chain.length === 0) {
+      return true;
+    }
+
+    // Check if domino is a double - doubles can't be meaningfully flipped
+    if (dominoData.left === dominoData.right) {
+      return false;
+    }
+
+    const openEnds = this.board.getOpenEnds();
+
+    // Check if both orientations are valid (meaning flip is allowed)
+    // If domino matches both ends, flipping doesn't matter
+    const matchesLeft =
+      dominoData.left === openEnds.left || dominoData.right === openEnds.left;
+    const matchesRight =
+      dominoData.left === openEnds.right || dominoData.right === openEnds.right;
+
+    // If it can be placed on either side in different orientations, allow flip
+    // But if it only matches one way on one side, don't allow flip
+    if (matchesLeft && matchesRight) {
+      // Can place on both sides - allow flip
+      return true;
+    } else if (matchesLeft || matchesRight) {
+      // Only matches one side - check if both orientations work
+      const end = matchesLeft ? openEnds.left : openEnds.right;
+      const canPlaceBothWays =
+        dominoData.left === end && dominoData.right === end;
+      return canPlaceBothWays; // Only allow flip if both ends match
+    }
+
+    return false; // Doesn't match at all, no flip needed
   }
 
   handleDominoSelected(dominoData) {

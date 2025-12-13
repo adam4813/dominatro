@@ -19,7 +19,10 @@ export class Scene {
     // State for interaction
     this.selectedDomino = null;
     this.selectedDominoData = null;
+    this.selectedDominoFlipped = false; // Track if selected domino is flipped
     this.hoveredObject = null;
+    this.hoveredZone = null; // Track which placement zone is hovered
+    this.ghostDomino = null; // Ghost preview of domino at placement zone
     this.rackDominoes = []; // Domino objects in the rack
     this.placementZones = []; // Placement zone objects
 
@@ -35,6 +38,23 @@ export class Scene {
      * @callback onDominoDeselectedCallback
      */
     this.onDominoDeselectedCallback = null;
+
+    /**
+     * Callback to check if domino can be flipped
+     * @callback canFlipDominoCallback
+     * @param {Object} dominoData - The domino data
+     * @returns {boolean} - True if flip is allowed
+     */
+    this.canFlipDominoCallback = null;
+
+    /**
+     * Callback to get the correct placement orientation for a domino
+     * @callback getPlacementOrientationCallback
+     * @param {Object} dominoData - The domino data
+     * @param {string} side - 'left', 'right', or 'center'
+     * @returns {Object} - { left: number, right: number }
+     */
+    this.getPlacementOrientationCallback = null;
 
     // Track mouse position for click vs drag detection
     this.mouseDownPosition = null;
@@ -248,6 +268,31 @@ export class Scene {
     // Update raycaster
     this.raycaster.setFromCamera(this.mouse, this.camera);
 
+    // Check for placement zone hover (if domino is selected)
+    if (this.selectedDomino && this.placementZones.length > 0) {
+      const zoneMeshes = this.placementZones.map((z) => z.mesh);
+      const zoneIntersects = this.raycaster.intersectObjects(zoneMeshes, false);
+
+      if (zoneIntersects.length > 0) {
+        const hoveredZone = this.placementZones.find(
+          (z) => z.mesh === zoneIntersects[0].object
+        );
+        if (hoveredZone !== this.hoveredZone) {
+          this.hoveredZone = hoveredZone;
+          if (hoveredZone && hoveredZone.isValid) {
+            this.updateGhostDomino(hoveredZone);
+          } else {
+            this.clearGhostDomino();
+          }
+        }
+      } else {
+        if (this.hoveredZone) {
+          this.hoveredZone = null;
+          this.clearGhostDomino();
+        }
+      }
+    }
+
     // Check for intersections with rack dominoes
     const rackMeshes = this.rackDominoes.map((d) => d.mesh);
     const intersects = this.raycaster.intersectObjects(rackMeshes, true);
@@ -327,6 +372,50 @@ export class Scene {
   handleKeyDown(event) {
     if (event.key === 'Escape') {
       this.deselectDomino();
+    } else if (
+      event.key === ' ' &&
+      this.selectedDomino &&
+      this.selectedDominoData
+    ) {
+      // Flip the selected domino
+      event.preventDefault(); // Prevent page scroll
+      this.flipSelectedDomino();
+    }
+  }
+
+  flipSelectedDomino() {
+    if (!this.selectedDominoData) return;
+
+    // Check if flip is allowed
+    if (
+      this.canFlipDominoCallback &&
+      !this.canFlipDominoCallback(this.selectedDominoData)
+    ) {
+      console.log('Scene: Flip not allowed for this domino placement');
+      return;
+    }
+
+    // Toggle flipped state
+    this.selectedDominoFlipped = !this.selectedDominoFlipped;
+
+    // Swap left and right in the data
+    [this.selectedDominoData.left, this.selectedDominoData.right] = [
+      this.selectedDominoData.right,
+      this.selectedDominoData.left,
+    ];
+
+    console.log(
+      `Scene: Flipped domino to [${this.selectedDominoData.left}|${this.selectedDominoData.right}]`
+    );
+
+    // Notify callback first (for updating placement zones)
+    if (this.onDominoSelectedCallback) {
+      this.onDominoSelectedCallback(this.selectedDominoData);
+    }
+
+    // Then update ghost domino if visible - force re-check of hover
+    if (this.hoveredZone) {
+      this.updateGhostDomino(this.hoveredZone);
     }
   }
 
@@ -353,6 +442,7 @@ export class Scene {
 
     this.selectedDomino = dominoMesh;
     this.selectedDominoData = dominoObj.data;
+    this.selectedDominoFlipped = false; // Reset flip state on selection
 
     // Highlight selected domino
     this.highlightDomino(dominoMesh, 0xffff00, 0.5);
@@ -370,8 +460,13 @@ export class Scene {
       this.clearHighlight(this.selectedDomino);
       this.selectedDomino = null;
       this.selectedDominoData = null;
+      this.selectedDominoFlipped = false;
 
       console.log('Scene: Deselected domino');
+
+      // Clear ghost domino
+      this.clearGhostDomino();
+      this.hoveredZone = null;
 
       // Clear placement zones
       this.clearPlacementZones();
@@ -461,6 +556,68 @@ export class Scene {
       zone.mesh.material.dispose();
     });
     this.placementZones = [];
+    this.clearGhostDomino();
+  }
+
+  /**
+   * Update ghost domino preview at placement zone
+   * @param {Object} zone - The placement zone being hovered
+   */
+  updateGhostDomino(zone) {
+    if (!this.selectedDominoData || !zone.isValid) {
+      this.clearGhostDomino();
+      return;
+    }
+
+    // Clear existing ghost
+    this.clearGhostDomino();
+
+    // Get the correct orientation for placement
+    let dominoToShow = { ...this.selectedDominoData };
+    if (this.getPlacementOrientationCallback) {
+      dominoToShow = this.getPlacementOrientationCallback(
+        this.selectedDominoData,
+        zone.side
+      );
+    }
+
+    // Create ghost domino with the correctly oriented pips
+    const ghostDomino = new Domino(dominoToShow.left, dominoToShow.right);
+
+    const isDouble = dominoToShow.left === dominoToShow.right;
+    const mesh = ghostDomino.getMesh();
+
+    // Position at the zone
+    mesh.position.copy(zone.mesh.position);
+    mesh.position.y = 0.1; // Same height as placed dominoes
+
+    // Rotate if not a double
+    if (!isDouble) {
+      mesh.rotation.set(0, Math.PI / 2, 0);
+    }
+
+    // Make it semi-transparent
+    mesh.traverse((child) => {
+      if (child.isMesh && child.material) {
+        child.material = child.material.clone();
+        child.material.transparent = true;
+        child.material.opacity = 0.5;
+      }
+    });
+
+    this.ghostDomino = { domino: ghostDomino, mesh };
+    this.scene.add(mesh);
+  }
+
+  /**
+   * Clear the ghost domino preview
+   */
+  clearGhostDomino() {
+    if (this.ghostDomino) {
+      this.scene.remove(this.ghostDomino.mesh);
+      this.ghostDomino.domino.dispose();
+      this.ghostDomino = null;
+    }
   }
 
   add(object) {
@@ -498,6 +655,7 @@ export class Scene {
       this.ground.geometry.dispose();
       this.ground.material.dispose();
     }
+    this.clearGhostDomino();
     this.clearPlacementZones();
   }
 }

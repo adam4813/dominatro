@@ -140,6 +140,38 @@ export class Board {
   }
 
   /**
+   * Get the orientation a domino would need to be placed
+   * @param {Object} dominoData - Object with left and right properties
+   * @param {string} side - 'left' or 'right'
+   * @returns {Object} - { left: number, right: number } - The oriented domino
+   */
+  getPlacementOrientation(dominoData, side) {
+    let left = dominoData.left;
+    let right = dominoData.right;
+
+    if (this.chain.length === 0) {
+      // First domino - orientation doesn't matter
+      return { left, right };
+    }
+
+    if (side === 'left') {
+      // Placing on left - right pip should match the current left end
+      if (left === this.openEnds.left) {
+        // Need to flip
+        [left, right] = [right, left];
+      }
+      return { left, right };
+    } else {
+      // Placing on right - left pip should match the current right end
+      if (right === this.openEnds.right) {
+        // Need to flip
+        [left, right] = [right, left];
+      }
+      return { left, right };
+    }
+  }
+
+  /**
    * Get the X positions for placement zones based on current chain
    * @returns {Object} - { leftX: number, rightX: number }
    */
