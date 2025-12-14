@@ -121,11 +121,8 @@ class Game {
       // Can place on both sides - allow flip
       return true;
     } else if (matchesLeft || matchesRight) {
-      // Only matches one side - check if both orientations work
-      const end = matchesLeft ? openEnds.left : openEnds.right;
-      const canPlaceBothWays =
-        dominoData.left === end && dominoData.right === end;
-      return canPlaceBothWays; // Only allow flip if both ends match
+      // Only matches one side - not a double, so both orientations are possible
+      return true;
     }
 
     return false; // Doesn't match at all, no flip needed
@@ -247,6 +244,11 @@ class Game {
 
       // Reposition remaining dominoes
       this.repositionRack();
+    } else {
+      console.error('removeDominoFromRack: Domino not found in rackDominoes.', {
+        dominoData,
+        rackDominoes: this.rackDominoes.map((rd) => rd.data),
+      });
     }
   }
 

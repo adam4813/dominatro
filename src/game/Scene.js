@@ -191,13 +191,13 @@ export class Scene {
 
     // Check if we need to expand left
     if (minX - edgeBuffer < this.groundMinX) {
-      newMinX = minX - edgeBuffer; // Add 2 extra to avoid constant resizing
+      newMinX = minX - edgeBuffer - 2; // Add 2 extra to avoid constant resizing
       needsUpdate = true;
     }
 
     // Check if we need to expand right
     if (maxX + edgeBuffer > this.groundMaxX) {
-      newMaxX = maxX + edgeBuffer; // Add 2 extra to avoid constant resizing
+      newMaxX = maxX + edgeBuffer + 2; // Add 2 extra to avoid constant resizing
       needsUpdate = true;
     }
 
@@ -218,6 +218,7 @@ export class Scene {
     if (this.ground) {
       this.scene.remove(this.ground);
       this.ground.geometry.dispose();
+      this.ground.material.dispose(); // Prevent memory leak
     }
 
     // Create new ground with updated size
@@ -395,14 +396,15 @@ export class Scene {
       return;
     }
 
-    // Toggle flipped state
+    // Toggle flipped state (though currently unused, kept for potential future use)
     this.selectedDominoFlipped = !this.selectedDominoFlipped;
 
-    // Swap left and right in the data
-    [this.selectedDominoData.left, this.selectedDominoData.right] = [
-      this.selectedDominoData.right,
-      this.selectedDominoData.left,
-    ];
+    // Swap left and right in a copy of the data to avoid mutating the original
+    this.selectedDominoData = {
+      ...this.selectedDominoData,
+      left: this.selectedDominoData.right,
+      right: this.selectedDominoData.left,
+    };
 
     console.log(
       `Scene: Flipped domino to [${this.selectedDominoData.left}|${this.selectedDominoData.right}]`
@@ -614,6 +616,16 @@ export class Scene {
    */
   clearGhostDomino() {
     if (this.ghostDomino) {
+      // Dispose of cloned materials to prevent memory leaks
+      this.ghostDomino.mesh.traverse((child) => {
+        if (child.isMesh && child.material) {
+          // Only dispose if it's a cloned material (has opacity set)
+          if (child.material.opacity === 0.5) {
+            child.material.dispose();
+          }
+        }
+      });
+
       this.scene.remove(this.ghostDomino.mesh);
       this.ghostDomino.domino.dispose();
       this.ghostDomino = null;

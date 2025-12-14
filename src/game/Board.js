@@ -2,6 +2,11 @@ import { Domino } from './Domino.js';
 import * as THREE from 'three';
 
 export class Board {
+  // Constants for domino dimensions and spacing
+  static DOUBLE_HALF_WIDTH = 0.5;
+  static REGULAR_HALF_WIDTH = 1.1;
+  static DOMINO_GAP = 0.1;
+
   constructor(scene, gameState) {
     this.scene = scene;
     this.gameState = gameState;
@@ -26,6 +31,15 @@ export class Board {
    * @returns {boolean} - True if placement is valid
    */
   isValidPlacement(dominoData, side) {
+    // Validate side parameter
+    const validSides = ['left', 'right'];
+    if (!validSides.includes(side)) {
+      console.error(
+        `Board: Invalid side parameter "${side}". Must be one of: ${validSides.join(', ')}`
+      );
+      return false;
+    }
+
     // If board is empty, any domino can be placed
     if (this.chain.length === 0) {
       console.log('Board: First domino - placement is valid');
@@ -51,10 +65,24 @@ export class Board {
    * @returns {boolean} - True if placement succeeded
    */
   placeDomino(dominoData, side) {
+    // Validate side parameter
+    const validSides = ['left', 'right'];
+    if (!validSides.includes(side)) {
+      console.error(
+        `Board: Invalid side parameter "${side}". Must be one of: ${validSides.join(', ')}`
+      );
+      return false;
+    }
+
     if (!this.isValidPlacement(dominoData, side)) {
       console.log('Board: Invalid placement attempt');
       return false;
     }
+
+    // Save previous state for potential rollback
+    const previousOpenEnds = { ...this.openEnds };
+    const previousChainLength = this.chain.length;
+    const previousRootIndex = this.rootIndex;
 
     // Determine the correct orientation for the domino
     let left = dominoData.left;
@@ -104,18 +132,15 @@ export class Board {
         console.error(
           'Board: Failed to remove domino from rack. Aborting placement.'
         );
-        // Rollback the chain modification
-        if (this.chain.length === 1) {
+        // Rollback using saved state
+        this.openEnds = previousOpenEnds;
+        this.rootIndex = previousRootIndex;
+        if (previousChainLength === 0) {
           this.chain = [];
-          this.rootIndex = -1;
-          this.openEnds = { left: null, right: null };
         } else if (side === 'left') {
           this.chain.shift();
-          this.rootIndex--; // Rollback the root index shift
-          this.openEnds.left = this.chain[0].left;
         } else {
           this.chain.pop();
-          this.openEnds.right = this.chain[this.chain.length - 1].right;
         }
         return false;
       }
@@ -137,6 +162,53 @@ export class Board {
    */
   getOpenEnds() {
     return { ...this.openEnds };
+  }
+
+  /**
+   * Calculate positions for all dominoes in the chain relative to root at x=0
+   * @returns {Array<number>} - Array of x positions for each domino in chain
+   */
+  calculateChainPositions() {
+    if (this.chain.length === 0) return [];
+
+    const positions = [];
+    positions[this.rootIndex] = 0;
+
+    // Calculate positions to the right of root
+    let currentX = 0;
+    for (let i = this.rootIndex + 1; i < this.chain.length; i++) {
+      const prevDomino = this.chain[i - 1];
+      const currDomino = this.chain[i];
+      const prevIsDouble = prevDomino.left === prevDomino.right;
+      const currIsDouble = currDomino.left === currDomino.right;
+      const prevHalfWidth = prevIsDouble
+        ? Board.DOUBLE_HALF_WIDTH
+        : Board.REGULAR_HALF_WIDTH;
+      const currHalfWidth = currIsDouble
+        ? Board.DOUBLE_HALF_WIDTH
+        : Board.REGULAR_HALF_WIDTH;
+      currentX += prevHalfWidth + currHalfWidth + Board.DOMINO_GAP;
+      positions[i] = currentX;
+    }
+
+    // Calculate positions to the left of root
+    currentX = 0;
+    for (let i = this.rootIndex - 1; i >= 0; i--) {
+      const prevDomino = this.chain[i + 1];
+      const currDomino = this.chain[i];
+      const prevIsDouble = prevDomino.left === prevDomino.right;
+      const currIsDouble = currDomino.left === currDomino.right;
+      const prevHalfWidth = prevIsDouble
+        ? Board.DOUBLE_HALF_WIDTH
+        : Board.REGULAR_HALF_WIDTH;
+      const currHalfWidth = currIsDouble
+        ? Board.DOUBLE_HALF_WIDTH
+        : Board.REGULAR_HALF_WIDTH;
+      currentX -= prevHalfWidth + currHalfWidth + Board.DOMINO_GAP;
+      positions[i] = currentX;
+    }
+
+    return positions;
   }
 
   /**
@@ -180,35 +252,8 @@ export class Board {
       return { leftX: 0, rightX: 0 };
     }
 
-    // Calculate positions same as renderChain - relative to root at x=0
-    const positions = [];
-    positions[this.rootIndex] = 0;
-
-    // Calculate positions to the right of root
-    let currentX = 0;
-    for (let i = this.rootIndex + 1; i < this.chain.length; i++) {
-      const prevDomino = this.chain[i - 1];
-      const currDomino = this.chain[i];
-      const prevIsDouble = prevDomino.left === prevDomino.right;
-      const currIsDouble = currDomino.left === currDomino.right;
-      const prevHalfWidth = prevIsDouble ? 0.5 : 1.1;
-      const currHalfWidth = currIsDouble ? 0.5 : 1.1;
-      currentX += prevHalfWidth + currHalfWidth + 0.1;
-      positions[i] = currentX;
-    }
-
-    // Calculate positions to the left of root
-    currentX = 0;
-    for (let i = this.rootIndex - 1; i >= 0; i--) {
-      const prevDomino = this.chain[i + 1];
-      const currDomino = this.chain[i];
-      const prevIsDouble = prevDomino.left === prevDomino.right;
-      const currIsDouble = currDomino.left === currDomino.right;
-      const prevHalfWidth = prevIsDouble ? 0.5 : 1.1;
-      const currHalfWidth = currIsDouble ? 0.5 : 1.1;
-      currentX -= prevHalfWidth + currHalfWidth + 0.1;
-      positions[i] = currentX;
-    }
+    // Use the shared position calculation
+    const positions = this.calculateChainPositions();
 
     // Get the leftmost and rightmost domino positions
     const leftmostPos = positions[0];
@@ -245,37 +290,8 @@ export class Board {
 
     if (this.chain.length === 0) return;
 
-    // Position dominoes with the root domino at x=0
-    const positions = [];
-
-    // Calculate position for root domino
-    positions[this.rootIndex] = 0;
-
-    // Calculate positions to the right of root
-    let currentX = 0;
-    for (let i = this.rootIndex + 1; i < this.chain.length; i++) {
-      const prevDomino = this.chain[i - 1];
-      const currDomino = this.chain[i];
-      const prevIsDouble = prevDomino.left === prevDomino.right;
-      const currIsDouble = currDomino.left === currDomino.right;
-      const prevHalfWidth = prevIsDouble ? 0.5 : 1.1;
-      const currHalfWidth = currIsDouble ? 0.5 : 1.1;
-      currentX += prevHalfWidth + currHalfWidth + 0.1; // 0.1 gap
-      positions[i] = currentX;
-    }
-
-    // Calculate positions to the left of root
-    currentX = 0;
-    for (let i = this.rootIndex - 1; i >= 0; i--) {
-      const prevDomino = this.chain[i + 1];
-      const currDomino = this.chain[i];
-      const prevIsDouble = prevDomino.left === prevDomino.right;
-      const currIsDouble = currDomino.left === currDomino.right;
-      const prevHalfWidth = prevIsDouble ? 0.5 : 1.1;
-      const currHalfWidth = currIsDouble ? 0.5 : 1.1;
-      currentX -= prevHalfWidth + currHalfWidth + 0.1; // 0.1 gap
-      positions[i] = currentX;
-    }
+    // Use the shared position calculation
+    const positions = this.calculateChainPositions();
 
     // Render each domino
     this.chain.forEach((dominoData, index) => {
@@ -311,33 +327,8 @@ export class Board {
       return;
     }
 
-    // Calculate the same positions as renderChain
-    const positions = [];
-    positions[this.rootIndex] = 0;
-
-    let currentX = 0;
-    for (let i = this.rootIndex + 1; i < this.chain.length; i++) {
-      const prevDomino = this.chain[i - 1];
-      const currDomino = this.chain[i];
-      const prevIsDouble = prevDomino.left === prevDomino.right;
-      const currIsDouble = currDomino.left === currDomino.right;
-      const prevHalfWidth = prevIsDouble ? 0.5 : 1.1;
-      const currHalfWidth = currIsDouble ? 0.5 : 1.1;
-      currentX += prevHalfWidth + currHalfWidth + 0.1;
-      positions[i] = currentX;
-    }
-
-    currentX = 0;
-    for (let i = this.rootIndex - 1; i >= 0; i--) {
-      const prevDomino = this.chain[i + 1];
-      const currDomino = this.chain[i];
-      const prevIsDouble = prevDomino.left === prevDomino.right;
-      const currIsDouble = currDomino.left === currDomino.right;
-      const prevHalfWidth = prevIsDouble ? 0.5 : 1.1;
-      const currHalfWidth = currIsDouble ? 0.5 : 1.1;
-      currentX -= prevHalfWidth + currHalfWidth + 0.1;
-      positions[i] = currentX;
-    }
+    // Use the shared position calculation
+    const positions = this.calculateChainPositions();
 
     // Get min and max X positions
     const leftmostPos = positions[0];
@@ -346,8 +337,12 @@ export class Board {
     const rightmostDomino = this.chain[this.chain.length - 1];
     const leftIsDouble = leftmostDomino.left === leftmostDomino.right;
     const rightIsDouble = rightmostDomino.left === rightmostDomino.right;
-    const leftHalfWidth = leftIsDouble ? 0.5 : 1.1;
-    const rightHalfWidth = rightIsDouble ? 0.5 : 1.1;
+    const leftHalfWidth = leftIsDouble
+      ? Board.DOUBLE_HALF_WIDTH
+      : Board.REGULAR_HALF_WIDTH;
+    const rightHalfWidth = rightIsDouble
+      ? Board.DOUBLE_HALF_WIDTH
+      : Board.REGULAR_HALF_WIDTH;
 
     const minX = leftmostPos - leftHalfWidth;
     const maxX = rightmostPos + rightHalfWidth;
