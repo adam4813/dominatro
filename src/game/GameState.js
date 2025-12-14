@@ -132,8 +132,12 @@ export class GameState {
   /**
    * Place a tile from the rack onto the board
    * @param {number} rackIndex - Index of tile in player's rack
+   * @returns {Object|null} The tile that was played, or null if invalid index
    */
   playTileFromRack(rackIndex) {
+    if (typeof rackIndex !== 'number' || !Number.isFinite(rackIndex)) {
+      return null;
+    }
     if (rackIndex >= 0 && rackIndex < this.playerRack.length) {
       const tile = this.playerRack.splice(rackIndex, 1)[0];
       this.board.push(tile);

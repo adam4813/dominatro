@@ -83,11 +83,17 @@ export class Board {
 
   /**
    * Deal tiles from bone pile to player rack and refresh HUD
-   * @param {number} count - Number of tiles to deal
+   * @param {number} count - Number of tiles to deal (must be a positive integer)
+   * @returns {Array} Array of dealt tiles
    */
   dealTilesToRack(count) {
-    if (typeof count !== 'number' || !Number.isFinite(count) || count < 0) {
-      throw new Error('Count must be a non-negative number');
+    if (
+      typeof count !== 'number' ||
+      !Number.isFinite(count) ||
+      count < 0 ||
+      !Number.isInteger(count)
+    ) {
+      throw new Error('Count must be a non-negative integer');
     }
     const dealtTiles = this.gameState.dealToRack(count);
     if (this.hud) {
@@ -111,8 +117,9 @@ export class Board {
 
   /**
    * Decrement pulls and refresh HUD
+   * Represents completion of a pull in the match progression
    */
-  decrementPulls() {
+  completePull() {
     this.gameState.decrementPulls();
     if (this.hud) {
       this.hud.updateProgression();

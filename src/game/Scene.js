@@ -122,10 +122,18 @@ export class Scene {
     return this.renderer.domElement;
   }
 
+  /**
+   * Returns the underlying THREE.Scene instance
+   * @returns {THREE.Scene} The Three.js scene object
+   */
   getScene() {
     return this.scene;
   }
 
+  /**
+   * Returns the camera used in the scene
+   * @returns {THREE.PerspectiveCamera} The Three.js perspective camera
+   */
   getCamera() {
     return this.camera;
   }

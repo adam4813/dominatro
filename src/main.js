@@ -23,7 +23,10 @@ class Game {
     this.scene.render();
   }
 
-  // Expose methods for testing HUD updates
+  /**
+   * Test helper: Add points to the score
+   * @param {number} points - Points to add to the current score
+   */
   testAddScore(points) {
     if (typeof points !== 'number' || !Number.isFinite(points)) {
       console.error('testAddScore: points must be a valid number');
@@ -42,9 +45,18 @@ class Game {
     }
   }
 
+  /**
+   * Test helper: Deal tiles from the bone pile to the player's rack
+   * @param {number} count - Number of tiles to deal (must be a positive integer)
+   */
   testDealTiles(count) {
-    if (typeof count !== 'number' || !Number.isFinite(count) || count < 0) {
-      console.error('testDealTiles: count must be a non-negative number');
+    if (
+      typeof count !== 'number' ||
+      !Number.isFinite(count) ||
+      count < 0 ||
+      !Number.isInteger(count)
+    ) {
+      console.error('testDealTiles: count must be a non-negative integer');
       return;
     }
     if (count > this.board.gameState.getBonePileSize()) {
@@ -67,15 +79,20 @@ class Game {
     }
   }
 
+  /**
+   * Test helper: Play a tile from the player's rack
+   * @param {number} index - Index of the tile in the rack (must be a non-negative integer)
+   */
   testPlayTile(index) {
     if (
       typeof index !== 'number' ||
       !Number.isFinite(index) ||
       index < 0 ||
+      !Number.isInteger(index) ||
       index >= this.board.gameState.getPlayerRackSize()
     ) {
       console.error(
-        'testPlayTile: index must be a valid rack position (0-' +
+        'testPlayTile: index must be a valid integer rack position (0-' +
           (this.board.gameState.getPlayerRackSize() - 1) +
           ')'
       );
@@ -87,8 +104,11 @@ class Game {
     }
   }
 
-  testDecrementPulls() {
-    this.board.decrementPulls();
+  /**
+   * Test helper: Complete the current pull and advance to the next one
+   */
+  testCompletePull() {
+    this.board.completePull();
     console.log('Pulls remaining:', this.board.gameState.getPullsRemaining());
   }
 }
@@ -101,9 +121,7 @@ let gameInstance = null;
 window.addEventListener('DOMContentLoaded', () => {
   gameInstance = new Game();
   // Expose for development/testing only
-  if (typeof window !== 'undefined') {
-    window.__GAME_DEBUG__ = { gameInstance };
-  }
+  window.__GAME_DEBUG__ = { gameInstance };
 });
 
 export { gameInstance };

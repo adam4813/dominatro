@@ -1,5 +1,13 @@
 import * as THREE from 'three';
 
+/**
+ * HUD (Heads-Up Display) class for rendering game information on canvas
+ *
+ * Displays player score, match progression, bone pile count, and player rack
+ * using Three.js sprites with dynamically rendered canvas textures.
+ *
+ * @class HUD
+ */
 export class HUD {
   // Constants for HUD layout and styling
   static PANEL_SCORE_WIDTH = 200;
@@ -42,13 +50,21 @@ export class HUD {
   static SPRITE_INDEX_BONE_PILE = 2;
   static SPRITE_INDEX_RACK = 3;
 
+  /**
+   * Creates a new HUD instance
+   * @param {GameState} gameState - The game state object to display information from
+   * @param {THREE.Scene} scene - The Three.js scene to add HUD sprites to
+   * @param {THREE.PerspectiveCamera} camera - The Three.js camera for positioning calculations
+   */
   constructor(gameState, scene, camera) {
     this.gameState = gameState;
     this.scene = scene;
     this.camera = camera;
     this.sprites = [];
     this.canvases = {};
+    this.handleResize = this.handleResize.bind(this);
     this.createHUD();
+    window.addEventListener('resize', this.handleResize);
   }
 
   createCanvasTexture(width, height) {
@@ -60,22 +76,7 @@ export class HUD {
   }
 
   createHUD() {
-    // Get the canvas dimensions for proper positioning
-    const canvas = this.scene.getCanvas();
-    const canvasWidth = canvas.width;
-    const canvasHeight = canvas.height;
-
-    // Calculate positions based on canvas size and camera view
-    // For orthographic positioning, we need to account for the camera's frustum
-    const aspect = canvasWidth / canvasHeight;
-    const frustumHeight = 15; // Based on camera position at y=15
-    const frustumWidth = frustumHeight * aspect;
-
-    // Position panels at edges of the viewport
-    const topY = frustumHeight * 0.48; // Near top edge
-    const bottomY = -frustumHeight * 0.48; // Near bottom edge
-    const leftX = -frustumWidth * 0.45; // Near left edge
-    const rightX = frustumWidth * 0.45; // Near right edge
+    const positions = this.calculatePositions();
 
     // Create score panel (top-left)
     const scoreCanvas = this.createCanvasTexture(
@@ -84,7 +85,11 @@ export class HUD {
     );
     this.canvases.score = scoreCanvas;
     this.drawScorePanel(scoreCanvas.context, this.gameState.getScore());
-    const scoreSprite = this.createSprite(scoreCanvas.canvas, leftX, topY);
+    const scoreSprite = this.createSprite(
+      scoreCanvas.canvas,
+      positions.leftX,
+      positions.topY
+    );
     this.sprites[HUD.SPRITE_INDEX_SCORE] = scoreSprite;
 
     // Create progression panel (top-center)
@@ -93,8 +98,10 @@ export class HUD {
       HUD.PANEL_PROGRESSION_HEIGHT
     );
     this.canvases.progression = progressionCanvas;
-    const currentPull =
-      this.gameState.getTotalPulls() - this.gameState.getPullsRemaining() + 1;
+    const currentPull = Math.min(
+      this.gameState.getTotalPulls() - this.gameState.getPullsRemaining() + 1,
+      this.gameState.getTotalPulls()
+    );
     this.drawProgressionPanel(
       progressionCanvas.context,
       currentPull,
@@ -104,7 +111,7 @@ export class HUD {
     const progressionSprite = this.createSprite(
       progressionCanvas.canvas,
       0,
-      topY
+      positions.topY
     );
     this.sprites[HUD.SPRITE_INDEX_PROGRESSION] = progressionSprite;
 
@@ -120,8 +127,8 @@ export class HUD {
     );
     const bonePileSprite = this.createSprite(
       bonePileCanvas.canvas,
-      rightX,
-      topY
+      positions.rightX,
+      positions.topY
     );
     this.sprites[HUD.SPRITE_INDEX_BONE_PILE] = bonePileSprite;
 
@@ -132,12 +139,78 @@ export class HUD {
     );
     this.canvases.rack = rackCanvas;
     this.drawRackPanel(rackCanvas.context, this.gameState.getPlayerRack());
-    const rackSprite = this.createSprite(rackCanvas.canvas, 0, bottomY);
+    const rackSprite = this.createSprite(
+      rackCanvas.canvas,
+      0,
+      positions.bottomY
+    );
     rackSprite.scale.set(HUD.SPRITE_SCALE_RACK_X, HUD.SPRITE_SCALE_RACK_Y, 1);
     this.sprites[HUD.SPRITE_INDEX_RACK] = rackSprite;
 
     // Initial update
     this.updateAll();
+  }
+
+  /**
+   * Calculate HUD panel positions based on camera and viewport dimensions
+   * @returns {Object} Object containing position coordinates for HUD panels
+   */
+  calculatePositions() {
+    // Get the canvas dimensions for proper positioning
+    const canvas = this.scene.getCanvas();
+    const canvasWidth = canvas.clientWidth || window.innerWidth;
+    const canvasHeight = canvas.clientHeight || window.innerHeight;
+
+    // Calculate positions based on perspective camera's field of view
+    // The camera is positioned at (0, 15, 0) looking down at (0, 0, 0)
+    const aspect = canvasWidth / canvasHeight;
+    const distance = 15; // Camera's Y position (distance from origin)
+    const fov = this.camera.fov;
+
+    // Calculate visible height at the camera's distance using perspective projection
+    const visibleHeight = 2 * Math.tan((fov * Math.PI) / 180 / 2) * distance;
+    const visibleWidth = visibleHeight * aspect;
+
+    // Position panels at edges of the viewport
+    const topY = visibleHeight * 0.45; // Near top edge
+    const bottomY = -visibleHeight * 0.45; // Near bottom edge
+    const leftX = -visibleWidth * 0.43; // Near left edge
+    const rightX = visibleWidth * 0.43; // Near right edge
+
+    return { topY, bottomY, leftX, rightX };
+  }
+
+  /**
+   * Handle window resize events by updating sprite positions
+   */
+  handleResize() {
+    const positions = this.calculatePositions();
+
+    // Update sprite positions
+    if (this.sprites[HUD.SPRITE_INDEX_SCORE]) {
+      this.sprites[HUD.SPRITE_INDEX_SCORE].position.set(
+        positions.leftX,
+        positions.topY,
+        0
+      );
+    }
+    if (this.sprites[HUD.SPRITE_INDEX_PROGRESSION]) {
+      this.sprites[HUD.SPRITE_INDEX_PROGRESSION].position.set(
+        0,
+        positions.topY,
+        0
+      );
+    }
+    if (this.sprites[HUD.SPRITE_INDEX_BONE_PILE]) {
+      this.sprites[HUD.SPRITE_INDEX_BONE_PILE].position.set(
+        positions.rightX,
+        positions.topY,
+        0
+      );
+    }
+    if (this.sprites[HUD.SPRITE_INDEX_RACK]) {
+      this.sprites[HUD.SPRITE_INDEX_RACK].position.set(0, positions.bottomY, 0);
+    }
   }
 
   createSprite(canvas, x, y) {
@@ -400,7 +473,7 @@ export class HUD {
   updateProgression() {
     const pullsRemaining = this.gameState.getPullsRemaining();
     const totalPulls = this.gameState.getTotalPulls();
-    const currentPull = totalPulls - pullsRemaining + 1;
+    const currentPull = Math.min(totalPulls - pullsRemaining + 1, totalPulls);
     const targetScore = this.gameState.getTargetScore();
     this.drawProgressionPanel(
       this.canvases.progression.context,
@@ -425,6 +498,9 @@ export class HUD {
   }
 
   destroy() {
+    // Remove resize handler
+    window.removeEventListener('resize', this.handleResize);
+
     // Remove all sprites from scene
     this.sprites.forEach((sprite) => {
       this.scene.remove(sprite);
