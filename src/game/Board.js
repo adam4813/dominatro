@@ -264,8 +264,12 @@ export class Board {
     const rightIsDouble = rightmostDomino.left === rightmostDomino.right;
 
     // Calculate zone positions (outside the chain)
-    const leftHalfWidth = leftIsDouble ? 0.5 : 1.1;
-    const rightHalfWidth = rightIsDouble ? 0.5 : 1.1;
+    const leftHalfWidth = leftIsDouble
+      ? Board.DOUBLE_HALF_WIDTH
+      : Board.REGULAR_HALF_WIDTH;
+    const rightHalfWidth = rightIsDouble
+      ? Board.DOUBLE_HALF_WIDTH
+      : Board.REGULAR_HALF_WIDTH;
 
     return {
       leftX: leftmostPos - leftHalfWidth - 1.4, // 1.4 = zone half-width + gap

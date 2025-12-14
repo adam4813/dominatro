@@ -231,7 +231,18 @@ class Game {
    * @param {Object} dominoData - The domino data object to remove from visual rack
    */
   removeDominoFromRack(dominoData) {
-    const index = this.rackDominoes.findIndex((rd) => rd.data === dominoData);
+    // Use value-based comparison instead of reference equality
+    // This handles cases where domino data has been flipped (creating a new object)
+    const index = this.rackDominoes.findIndex((rd) => {
+      if (!rd.data || !dominoData) return false;
+      // Consider both orientations as matching the same domino
+      // e.g., [2|5] matches [5|2] or [2|5]
+      return (
+        (rd.data.left === dominoData.left &&
+          rd.data.right === dominoData.right) ||
+        (rd.data.left === dominoData.right && rd.data.right === dominoData.left)
+      );
+    });
 
     if (index > -1) {
       const rackDomino = this.rackDominoes[index];
