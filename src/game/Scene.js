@@ -16,6 +16,10 @@ export class Scene {
     this.setupGround();
     this.setupRaycaster();
 
+    // HUD rendering
+    this.hudScene = null;
+    this.hudCamera = null;
+
     // State for interaction
     this.selectedDomino = null;
     this.selectedDominoData = null;
@@ -648,7 +652,16 @@ export class Scene {
 
   render() {
     this.controls.update();
+
+    // Render the main 3D scene
+    this.renderer.autoClear = true;
     this.renderer.render(this.scene, this.camera);
+
+    // Render the HUD on top (screen-space overlay)
+    if (this.hudScene && this.hudCamera) {
+      this.renderer.autoClear = false;
+      this.renderer.render(this.hudScene, this.hudCamera);
+    }
   }
 
   getCanvas() {
@@ -669,6 +682,16 @@ export class Scene {
    */
   getCamera() {
     return this.camera;
+  }
+
+  /**
+   * Set the HUD scene and camera for overlay rendering
+   * @param {THREE.Scene} hudScene - The HUD scene
+   * @param {THREE.OrthographicCamera} hudCamera - The HUD camera
+   */
+  setHUD(hudScene, hudCamera) {
+    this.hudScene = hudScene;
+    this.hudCamera = hudCamera;
   }
 
   destroy() {

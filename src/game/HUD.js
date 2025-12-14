@@ -53,16 +53,17 @@ export class HUD {
   /**
    * Creates a new HUD instance
    * @param {GameState} gameState - The game state object to display information from
-   * @param {Scene} scene - The game scene to add HUD sprites to
-   * @param {THREE.PerspectiveCamera} camera - The Three.js camera for positioning calculations
    */
-  constructor(gameState, scene, camera) {
+  constructor(gameState) {
     this.gameState = gameState;
-    this.scene = scene;
-    this.camera = camera;
     this.sprites = [];
     this.canvases = {};
     this.handleResize = this.handleResize.bind(this);
+
+    // Create a separate scene and orthographic camera for HUD rendering
+    this.hudScene = new THREE.Scene();
+    this.hudCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+
     this.createHUD();
     window.addEventListener('resize', this.handleResize);
   }
@@ -144,7 +145,11 @@ export class HUD {
       0,
       positions.bottomY
     );
-    rackSprite.scale.set(HUD.SPRITE_SCALE_RACK_X, HUD.SPRITE_SCALE_RACK_Y, 1);
+    rackSprite.scale.set(
+      HUD.SPRITE_SCALE_RACK_X * 0.1,
+      HUD.SPRITE_SCALE_RACK_Y * 0.1,
+      1
+    );
     this.sprites[HUD.SPRITE_INDEX_RACK] = rackSprite;
 
     // Initial update
@@ -152,30 +157,15 @@ export class HUD {
   }
 
   /**
-   * Calculate HUD panel positions based on camera and viewport dimensions
+   * Calculate HUD panel positions in normalized screen coordinates (-1 to 1)
    * @returns {Object} Object containing position coordinates for HUD panels
    */
   calculatePositions() {
-    // Get the canvas dimensions for proper positioning
-    const canvas = this.scene.getCanvas();
-    const canvasWidth = canvas.clientWidth || window.innerWidth;
-    const canvasHeight = canvas.clientHeight || window.innerHeight;
-
-    // Calculate positions based on perspective camera's field of view
-    // The camera is positioned at (0, 15, 0) looking down at (0, 0, 0)
-    const aspect = canvasWidth / canvasHeight;
-    const distance = 15; // Camera's Y position (distance from origin)
-    const fov = this.camera.fov;
-
-    // Calculate visible height at the camera's distance using perspective projection
-    const visibleHeight = 2 * Math.tan((fov * Math.PI) / 180 / 2) * distance;
-    const visibleWidth = visibleHeight * aspect;
-
-    // Position panels at edges of the viewport
-    const topY = visibleHeight * 0.45; // Near top edge
-    const bottomY = -visibleHeight * 0.45; // Near bottom edge
-    const leftX = -visibleWidth * 0.43; // Near left edge
-    const rightX = visibleWidth * 0.43; // Near right edge
+    // Position panels at edges of the screen in normalized coordinates
+    const topY = 0.85; // Near top edge
+    const bottomY = -0.85; // Near bottom edge
+    const leftX = -0.85; // Near left edge
+    const rightX = 0.85; // Near right edge
 
     return { topY, bottomY, leftX, rightX };
   }
@@ -223,9 +213,12 @@ export class HUD {
     });
     const sprite = new THREE.Sprite(material);
     sprite.position.set(x, y, 0);
-    sprite.scale.set(HUD.SPRITE_SCALE_NORMAL_X, HUD.SPRITE_SCALE_NORMAL_Y, 1);
-    sprite.renderOrder = 999; // Render on top
-    this.scene.add(sprite);
+    sprite.scale.set(
+      HUD.SPRITE_SCALE_NORMAL_X * 0.1,
+      HUD.SPRITE_SCALE_NORMAL_Y * 0.1,
+      1
+    );
+    this.hudScene.add(sprite);
     return sprite;
   }
 
@@ -497,13 +490,21 @@ export class HUD {
     this.updateRack();
   }
 
+  getHUDScene() {
+    return this.hudScene;
+  }
+
+  getHUDCamera() {
+    return this.hudCamera;
+  }
+
   destroy() {
     // Remove resize handler
     window.removeEventListener('resize', this.handleResize);
 
-    // Remove all sprites from scene
+    // Remove all sprites from HUD scene
     this.sprites.forEach((sprite) => {
-      this.scene.remove(sprite);
+      this.hudScene.remove(sprite);
       if (sprite.material.map) {
         sprite.material.map.dispose();
       }

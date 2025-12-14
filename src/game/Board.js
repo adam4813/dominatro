@@ -22,7 +22,11 @@ export class Board {
     this.boardYPosition = 0.1; // Height of dominoes on board
     this.boardZPosition = -3; // Position board chain towards back
 
-    this.hud = new HUD(this.gameState, this.scene, this.scene.getCamera());
+    this.hud = new HUD(this.gameState);
+
+    // Register HUD with scene for rendering
+    this.scene.setHUD(this.hud.getHUDScene(), this.hud.getHUDCamera());
+
     console.log('Board: Initialized empty board');
   }
 
