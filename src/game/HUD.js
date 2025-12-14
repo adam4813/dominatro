@@ -53,7 +53,7 @@ export class HUD {
   /**
    * Creates a new HUD instance
    * @param {GameState} gameState - The game state object to display information from
-   * @param {THREE.Scene} scene - The Three.js scene to add HUD sprites to
+   * @param {Scene} scene - The game scene to add HUD sprites to
    * @param {THREE.PerspectiveCamera} camera - The Three.js camera for positioning calculations
    */
   constructor(gameState, scene, camera) {
@@ -85,12 +85,12 @@ export class HUD {
     );
     this.canvases.score = scoreCanvas;
     this.drawScorePanel(scoreCanvas.context, this.gameState.getScore());
-    const scoreSprite = this.createSprite(
+
+    this.sprites[HUD.SPRITE_INDEX_SCORE] = this.createSprite(
       scoreCanvas.canvas,
       positions.leftX,
       positions.topY
     );
-    this.sprites[HUD.SPRITE_INDEX_SCORE] = scoreSprite;
 
     // Create progression panel (top-center)
     const progressionCanvas = this.createCanvasTexture(
@@ -108,12 +108,12 @@ export class HUD {
       this.gameState.getTotalPulls(),
       this.gameState.getTargetScore()
     );
-    const progressionSprite = this.createSprite(
+
+    this.sprites[HUD.SPRITE_INDEX_PROGRESSION] = this.createSprite(
       progressionCanvas.canvas,
       0,
       positions.topY
     );
-    this.sprites[HUD.SPRITE_INDEX_PROGRESSION] = progressionSprite;
 
     // Create bone pile panel (top-right)
     const bonePileCanvas = this.createCanvasTexture(
@@ -125,12 +125,12 @@ export class HUD {
       bonePileCanvas.context,
       this.gameState.getBonePileSize()
     );
-    const bonePileSprite = this.createSprite(
+
+    this.sprites[HUD.SPRITE_INDEX_BONE_PILE] = this.createSprite(
       bonePileCanvas.canvas,
       positions.rightX,
       positions.topY
     );
-    this.sprites[HUD.SPRITE_INDEX_BONE_PILE] = bonePileSprite;
 
     // Create rack panel (bottom)
     const rackCanvas = this.createCanvasTexture(
