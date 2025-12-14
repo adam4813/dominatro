@@ -1,11 +1,21 @@
 import './style.css';
 import { Scene } from './game/Scene.js';
 import { Board } from './game/Board.js';
+import { GameState } from './game/GameState.js';
+import { Domino } from './game/Domino.js';
+
+// Constants for rack layout
+const RACK_SPACING = 1.5;
+const RACK_Z_POSITION = 4;
+const RACK_Y_POSITION = 0.1;
 
 class Game {
   constructor() {
     this.scene = new Scene();
-    this.board = new Board(this.scene);
+    this.gameState = new GameState();
+    this.board = new Board(this.scene, this.gameState);
+    this.rackDominoes = []; // Store domino objects with their data
+
     this.init();
   }
 
@@ -14,8 +24,257 @@ class Game {
     const app = document.querySelector('#app');
     app.appendChild(this.scene.getCanvas());
 
+    // Setup the game
+    this.initializeGame();
+    this.setupRack();
+    this.setupInteractionCallbacks();
+
     // Start animation loop
     this.animate();
+  }
+
+  initializeGame() {
+    // Shuffle the bone pile
+    this.gameState.shuffle();
+
+    // Deal 7 tiles to player rack for testing placement
+    this.gameState.dealToRack(7);
+
+    console.log('Game: Dealt 7 tiles to rack');
+    console.log(
+      'Game: Remaining bone pile size:',
+      this.gameState.getBonePileSize()
+    );
+  }
+
+  setupRack() {
+    // Display player rack dominoes
+    const rack = this.gameState.getPlayerRack();
+    const rackStartX = (-(rack.length - 1) * RACK_SPACING) / 2;
+
+    rack.forEach((dominoData, index) => {
+      const domino = new Domino(dominoData.left, dominoData.right);
+      const x = rackStartX + index * RACK_SPACING;
+      domino.setPosition(x, RACK_Y_POSITION, RACK_Z_POSITION);
+
+      // Store domino with its data for later reference
+      this.rackDominoes.push({
+        domino: domino,
+        mesh: domino.getMesh(),
+        data: dominoData,
+      });
+
+      this.scene.add(domino.getMesh());
+    });
+
+    // Register rack dominoes with scene for raycasting
+    this.scene.rackDominoes = this.rackDominoes;
+
+    console.log('Game: Player rack displayed with', rack.length, 'dominoes');
+  }
+
+  setupInteractionCallbacks() {
+    // Set up callback for when a domino is selected
+    this.scene.onDominoSelectedCallback = (dominoData) => {
+      this.handleDominoSelected(dominoData);
+    };
+
+    // Set up callback for when a domino is deselected
+    this.scene.onDominoDeselectedCallback = () => {
+      this.handleDominoDeselected();
+    };
+
+    // Set up callback to check if flip is allowed
+    this.scene.canFlipDominoCallback = (dominoData) => {
+      return this.canFlipDomino(dominoData);
+    };
+
+    // Set up callback to get placement orientation
+    this.scene.getPlacementOrientationCallback = (dominoData, side) => {
+      return this.board.getPlacementOrientation(dominoData, side);
+    };
+  }
+
+  canFlipDomino(dominoData) {
+    // If board is empty, flipping is always allowed (doesn't matter)
+    if (this.board.chain.length === 0) {
+      return true;
+    }
+
+    // Check if domino is a double - doubles can't be meaningfully flipped
+    if (dominoData.left === dominoData.right) {
+      return false;
+    }
+
+    const openEnds = this.board.getOpenEnds();
+
+    // Check if both orientations are valid (meaning flip is allowed)
+    // If domino matches both ends, flipping doesn't matter
+    const matchesLeft =
+      dominoData.left === openEnds.left || dominoData.right === openEnds.left;
+    const matchesRight =
+      dominoData.left === openEnds.right || dominoData.right === openEnds.right;
+
+    // If it can be placed on either side in different orientations, allow flip
+    // But if it only matches one way on one side, don't allow flip
+    if (matchesLeft && matchesRight) {
+      // Can place on both sides - allow flip
+      return true;
+    } else if (matchesLeft || matchesRight) {
+      // Only matches one side - not a double, so both orientations are possible
+      return true;
+    }
+
+    return false; // Doesn't match at all, no flip needed
+  }
+
+  handleDominoSelected(dominoData) {
+    console.log('Game: Domino selected:', dominoData);
+
+    // Show placement zones
+    this.updatePlacementZones(dominoData);
+  }
+
+  handleDominoDeselected() {
+    console.log('Game: Domino deselected');
+  }
+
+  updatePlacementZones(dominoData) {
+    // Clear existing zones
+    this.scene.clearPlacementZones();
+
+    // Defensive null check
+    if (!this.board || !this.board.chain) {
+      console.error('Game: Board not properly initialized');
+      return;
+    }
+
+    const boardZ = this.board.boardZPosition;
+    const isDouble = dominoData.left === dominoData.right;
+
+    // If board is empty, show a single central placement zone
+    if (this.board.chain.length === 0) {
+      const isValid = true;
+      this.scene.createPlacementZone(
+        'center',
+        0,
+        boardZ,
+        isValid,
+        (side, valid) =>
+          this.handlePlacementZoneClick('center', valid, dominoData),
+        isDouble
+      );
+      return;
+    }
+
+    // Get placement positions based on current chain
+    const { leftX, rightX } = this.board.getPlacementPositions();
+
+    // Left placement zone
+    const leftValid = this.board.isValidPlacement(dominoData, 'left');
+    this.scene.createPlacementZone(
+      'left',
+      leftX,
+      boardZ,
+      leftValid,
+      (side, valid) => this.handlePlacementZoneClick('left', valid, dominoData),
+      isDouble
+    );
+
+    // Right placement zone
+    const rightValid = this.board.isValidPlacement(dominoData, 'right');
+    this.scene.createPlacementZone(
+      'right',
+      rightX,
+      boardZ,
+      rightValid,
+      (side, valid) =>
+        this.handlePlacementZoneClick('right', valid, dominoData),
+      isDouble
+    );
+
+    console.log(
+      `Game: Placement zones shown - Left: ${leftValid ? 'valid' : 'invalid'} at x=${leftX}, Right: ${rightValid ? 'valid' : 'invalid'} at x=${rightX}`
+    );
+  }
+
+  handlePlacementZoneClick(side, valid, dominoData) {
+    if (!valid) {
+      console.log('Game: Invalid placement attempt - deselecting domino');
+      this.scene.deselectDomino();
+      return;
+    }
+
+    console.log(`Game: Placing domino on ${side} side`);
+
+    // For center placement (first domino), treat it as left for consistency
+    const actualSide = side === 'center' ? 'left' : side;
+
+    // Place the domino on the board
+    const success = this.board.placeDomino(dominoData, actualSide);
+
+    if (success) {
+      // Remove domino from rack visually
+      this.removeDominoFromRack(dominoData);
+
+      // Deselect the domino
+      this.scene.deselectDomino();
+    } else {
+      console.log('Game: Placement failed');
+    }
+  }
+
+  /**
+   * Remove a domino from the visual rack display
+   * Note: The domino data is removed from GameState.playerRack by Board.placeDomino
+   * This method handles the visual/Three.js representation cleanup
+   * @param {Object} dominoData - The domino data object to remove from visual rack
+   */
+  removeDominoFromRack(dominoData) {
+    // Use value-based comparison instead of reference equality
+    // This handles cases where domino data has been flipped (creating a new object)
+    const index = this.rackDominoes.findIndex((rd) => {
+      if (!rd.data || !dominoData) return false;
+      // Consider both orientations as matching the same domino
+      // e.g., [2|5] matches [5|2] or [2|5]
+      return (
+        (rd.data.left === dominoData.left &&
+          rd.data.right === dominoData.right) ||
+        (rd.data.left === dominoData.right && rd.data.right === dominoData.left)
+      );
+    });
+
+    if (index > -1) {
+      const rackDomino = this.rackDominoes[index];
+      this.scene.remove(rackDomino.mesh);
+      rackDomino.domino.dispose();
+      this.rackDominoes.splice(index, 1);
+
+      // Update scene's rack dominoes
+      this.scene.rackDominoes = this.rackDominoes;
+
+      // Reposition remaining dominoes
+      this.repositionRack();
+    } else {
+      console.error('removeDominoFromRack: Domino not found in rackDominoes.', {
+        dominoData,
+        rackDominoes: this.rackDominoes.map((rd) => rd.data),
+      });
+    }
+  }
+
+  repositionRack() {
+    // Early return if rack is empty
+    if (this.rackDominoes.length === 0) {
+      return;
+    }
+
+    const rackStartX = (-(this.rackDominoes.length - 1) * RACK_SPACING) / 2;
+
+    this.rackDominoes.forEach((rackDomino, index) => {
+      const x = rackStartX + index * RACK_SPACING;
+      rackDomino.domino.setPosition(x, RACK_Y_POSITION, RACK_Z_POSITION);
+    });
   }
 
   animate() {

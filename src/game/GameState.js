@@ -60,6 +60,24 @@ export class GameState {
   }
 
   /**
+   * Remove a domino from the player's rack
+   * @param {Object} domino - The domino object to remove
+   * @returns {boolean} - True if domino was found and removed
+   */
+  removeDominoFromRack(domino) {
+    const index = this.playerRack.indexOf(domino);
+    if (index > -1) {
+      this.playerRack.splice(index, 1);
+      console.log(
+        'GameState: Removed domino from rack. Remaining:',
+        this.playerRack.length
+      );
+      return true;
+    }
+    return false;
+  }
+
+  /**
    * Reset the game state to initial conditions
    * Note: This does not shuffle the bone pile. Call shuffle() separately if needed.
    */
