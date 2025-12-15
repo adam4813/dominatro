@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { PipPosition } from '../types';
+import type { PipPosition, DominoType } from '../types';
 
 /**
  * Visual representation of a domino tile using Three.js
@@ -20,11 +20,17 @@ export class Domino {
 
   readonly leftPips: number;
   readonly rightPips: number;
+  readonly type: DominoType;
   private mesh: THREE.Group;
 
-  constructor(leftPips: number, rightPips: number) {
+  constructor(
+    leftPips: number,
+    rightPips: number,
+    type: DominoType = 'standard'
+  ) {
     this.leftPips = leftPips;
     this.rightPips = rightPips;
+    this.type = type;
     this.mesh = this.createDomino();
   }
 
@@ -36,8 +42,11 @@ export class Domino {
     const height = 2;
     const depth = 0.2;
 
-    // Create the main body of the domino using shared geometry and material
-    const body = new THREE.Mesh(Domino.bodyGeometry, Domino.bodyMaterial);
+    // Get body material based on tile type
+    const bodyMaterial = this.getBodyMaterial();
+
+    // Create the main body of the domino
+    const body = new THREE.Mesh(Domino.bodyGeometry, bodyMaterial);
     body.castShadow = true;
     body.receiveShadow = true;
     group.add(body);
@@ -52,7 +61,94 @@ export class Domino {
     // Add pips to the right half
     this.addPips(group, this.rightPips, height / 4, width, depth);
 
+    // Add special marker for non-standard tiles
+    if (this.type !== 'standard') {
+      this.addTypeMarker(group, width, depth);
+    }
+
     return group;
+  }
+
+  /**
+   * Get body material based on tile type with unique colors
+   */
+  private getBodyMaterial(): THREE.Material {
+    if (this.type === 'standard') {
+      return Domino.bodyMaterial;
+    }
+
+    // Clone and customize material for special types
+    const material = Domino.bodyMaterial.clone();
+
+    switch (this.type) {
+      case 'wild':
+        material.color.setHex(0xcc99ff); // Purple
+        material.emissive.setHex(0x9966ff);
+        material.emissiveIntensity = 0.3;
+        break;
+      case 'doubler':
+        material.color.setHex(0xffd700); // Gold
+        material.emissive.setHex(0xffaa00);
+        material.emissiveIntensity = 0.3;
+        break;
+      case 'odd-favor':
+        material.color.setHex(0xff6b6b); // Red
+        material.emissive.setHex(0xff4444);
+        material.emissiveIntensity = 0.2;
+        break;
+      case 'spinner':
+        material.color.setHex(0x4ecdc4); // Teal
+        material.emissive.setHex(0x2fa89f);
+        material.emissiveIntensity = 0.2;
+        break;
+      case 'crusher':
+        material.color.setHex(0x6c5ce7); // Blue-Purple
+        material.emissive.setHex(0x5545b8);
+        material.emissiveIntensity = 0.2;
+        break;
+      case 'cheater':
+        material.color.setHex(0xfd79a8); // Pink
+        material.emissive.setHex(0xfc5c9c);
+        material.emissiveIntensity = 0.2;
+        break;
+      case 'thief':
+        material.color.setHex(0x2d3436); // Dark Gray
+        material.emissive.setHex(0x636e72);
+        material.emissiveIntensity = 0.3;
+        break;
+      case 'blank-slate':
+        material.color.setHex(0xdfe6e9); // Light Gray
+        material.emissive.setHex(0xb2bec3);
+        material.emissiveIntensity = 0.2;
+        break;
+    }
+
+    return material;
+  }
+
+  /**
+   * Add a visual marker to indicate special tile type
+   */
+  private addTypeMarker(
+    group: THREE.Group,
+    width: number,
+    depth: number
+  ): void {
+    // Create a small icon/emblem on the tile
+    const markerGeometry = new THREE.CylinderGeometry(0.12, 0.12, 0.05, 8);
+    const markerMaterial = new THREE.MeshStandardMaterial({
+      color: 0xffffff,
+      emissive: 0xffffff,
+      emissiveIntensity: 0.5,
+      metalness: 0.8,
+      roughness: 0.2,
+    });
+
+    const marker = new THREE.Mesh(markerGeometry, markerMaterial);
+    marker.position.set(0, depth / 2 + 0.025, 0);
+    marker.rotation.x = Math.PI / 2;
+    marker.castShadow = true;
+    group.add(marker);
   }
 
   private addPips(

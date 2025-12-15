@@ -538,7 +538,11 @@ export class Scene {
       );
     }
 
-    const ghostDomino = new Domino(dominoToShow.left, dominoToShow.right);
+    const ghostDomino = new Domino(
+      dominoToShow.left,
+      dominoToShow.right,
+      dominoToShow.type
+    );
     const isDouble = dominoToShow.left === dominoToShow.right;
     const mesh = ghostDomino.getMesh();
 

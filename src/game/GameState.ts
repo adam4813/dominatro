@@ -19,7 +19,7 @@ export class GameState {
 
   /**
    * Initialize a complete set of double-six dominoes (0-0 through 6-6)
-   * Total of 28 unique tiles
+   * Total of 28 standard tiles plus special tiles
    */
   private initializeBonePile(): void {
     this.bonePile = [];
@@ -34,6 +34,37 @@ export class GameState {
         });
       }
     }
+
+    // Add special tiles
+    // Wild tiles - match any pip value (2 tiles)
+    this.bonePile.push(
+      { left: 0, right: 0, type: 'wild' },
+      { left: 0, right: 0, type: 'wild' }
+    );
+
+    // Doubler - doubles the score of the play (2 tiles)
+    this.bonePile.push(
+      { left: 3, right: 3, type: 'doubler' },
+      { left: 4, right: 4, type: 'doubler' }
+    );
+
+    // Odd Favor - bonus points for odd pip sums (1 tile)
+    this.bonePile.push({ left: 1, right: 3, type: 'odd-favor' });
+
+    // Spinner - allows rotation of board layout (1 tile)
+    this.bonePile.push({ left: 5, right: 5, type: 'spinner' });
+
+    // Crusher - removes opponent advantages (1 tile)
+    this.bonePile.push({ left: 6, right: 6, type: 'crusher' });
+
+    // Cheater - allows rule bending (1 tile)
+    this.bonePile.push({ left: 2, right: 4, type: 'cheater' });
+
+    // Thief - steals points or tiles (1 tile)
+    this.bonePile.push({ left: 1, right: 6, type: 'thief' });
+
+    // Blank Slate - resets certain game conditions (1 tile)
+    this.bonePile.push({ left: 0, right: 0, type: 'blank-slate' });
   }
 
   /**
@@ -170,5 +201,21 @@ export class GameState {
       }
     }
     return null;
+  }
+
+  /**
+   * Check if a domino pip matches an open end, accounting for wild tiles
+   */
+  isWildcardMatch(
+    dominoPip: number,
+    openEnd: number,
+    isWild: boolean
+  ): boolean {
+    // Wild tiles match any value
+    if (isWild) {
+      return true;
+    }
+    // Standard match
+    return dominoPip === openEnd;
   }
 }

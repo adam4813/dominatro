@@ -58,10 +58,14 @@ export class Board {
     }
 
     const openEnd = side === 'left' ? this.openEnds.left : this.openEnds.right;
-    const matches = dominoData.left === openEnd || dominoData.right === openEnd;
+    const isWild = dominoData.type === 'wild';
+
+    // Wild tiles match any value
+    const matches =
+      isWild || dominoData.left === openEnd || dominoData.right === openEnd;
 
     console.log(
-      `Board: Checking placement on ${side} side. Open end: ${openEnd}, Domino: [${dominoData.left}|${dominoData.right}], Valid: ${matches}`
+      `Board: Checking placement on ${side} side. Open end: ${openEnd}, Domino: [${dominoData.left}|${dominoData.right}] (${dominoData.type}), Valid: ${matches}`
     );
 
     return matches;
@@ -246,7 +250,11 @@ export class Board {
     const positions = this.calculateChainPositions();
 
     this.chain.forEach((dominoData, index) => {
-      const domino = new Domino(dominoData.left, dominoData.right);
+      const domino = new Domino(
+        dominoData.left,
+        dominoData.right,
+        dominoData.type
+      );
       const x = positions[index]!;
       const isDouble = dominoData.left === dominoData.right;
 

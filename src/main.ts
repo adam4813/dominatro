@@ -56,7 +56,11 @@ class Game {
     const rackStartX = (-(rack.length - 1) * RACK_SPACING) / 2;
 
     rack.forEach((dominoData, index) => {
-      const domino = new Domino(dominoData.left, dominoData.right);
+      const domino = new Domino(
+        dominoData.left,
+        dominoData.right,
+        dominoData.type
+      );
       const x = rackStartX + index * RACK_SPACING;
       domino.setPosition(x, RACK_Y_POSITION, RACK_Z_POSITION);
 
