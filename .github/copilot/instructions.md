@@ -75,3 +75,13 @@ Edit `Domino.ts` static materials/geometries
 2. Add draw method
 3. Add update method
 4. Position in `calculatePositions()`
+
+### Testing UI Changes
+
+When testing visual changes with the dev server and Playwright:
+
+1. Start dev server with `npm run dev`
+2. Navigate to the page with Playwright
+3. Take screenshots as needed
+4. **Always stop the dev server** after taking screenshots to avoid getting stuck
+5. Use `stop_bash` with the session ID or kill the process

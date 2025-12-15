@@ -5,7 +5,32 @@ import type * as THREE from 'three';
 import type { Domino } from '../game/Domino';
 
 /** Standard domino tile types */
-export type DominoType = 'standard';
+export type DominoType =
+  | 'standard'
+  | 'wild'
+  | 'doubler'
+  | 'odd-favor'
+  | 'spinner'
+  | 'crusher'
+  | 'cheater'
+  | 'thief'
+  | 'blank-slate';
+
+/** Special tile pip value constant - indicates tile should show symbol instead of pips */
+export const SPECIAL_TILE_PIP_VALUE = -1;
+
+/** Tile types that act as wildcards for matching */
+export const WILDCARD_TYPES: readonly DominoType[] = [
+  'wild',
+  'crusher',
+  'cheater',
+  'spinner',
+] as const;
+
+/** Check if a domino type is a wildcard */
+export function isWildcardType(type: DominoType): boolean {
+  return WILDCARD_TYPES.includes(type);
+}
 
 /** Represents a domino tile with left and right pip values */
 export interface DominoData {

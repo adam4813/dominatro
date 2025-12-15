@@ -1,4 +1,5 @@
 import type { DominoData } from '../types';
+import { SPECIAL_TILE_PIP_VALUE } from '../types';
 
 /**
  * Manages the game state including bone pile, player rack, and scoring
@@ -19,7 +20,7 @@ export class GameState {
 
   /**
    * Initialize a complete set of double-six dominoes (0-0 through 6-6)
-   * Total of 28 unique tiles
+   * Total of 28 standard tiles plus special tiles
    */
   private initializeBonePile(): void {
     this.bonePile = [];
@@ -34,6 +35,95 @@ export class GameState {
         });
       }
     }
+
+    // Add special tiles with unique behaviors:
+    //
+    // WILDCARD TILES (match any pip value):
+    // - Wild: Pure wildcard (2 tiles)
+    // - Crusher: Wildcard + future crushing ability (1 tile)
+    // - Cheater: Wildcard + future rule-bending ability (1 tile)
+    // - Spinner: Wildcard + future rotation ability (1 tile)
+    //
+    // SCORING MODIFIER TILES:
+    // - Doubler: Doubles the score of the play (2 tiles)
+    // - Odd Favor: Bonus points for odd pip sums (1 tile)
+    //
+    // UTILITY TILES:
+    // - Thief: Steals points or tiles (1 tile)
+    // - Blank Slate: Resets certain game conditions (1 tile)
+    //
+    // Special tiles use SPECIAL_TILE_PIP_VALUE (-1) to indicate they should
+    // display symbols instead of numeric pips
+
+    // Wild tiles - match any pip value (2 tiles)
+    this.bonePile.push(
+      {
+        left: SPECIAL_TILE_PIP_VALUE,
+        right: SPECIAL_TILE_PIP_VALUE,
+        type: 'wild',
+      },
+      {
+        left: SPECIAL_TILE_PIP_VALUE,
+        right: SPECIAL_TILE_PIP_VALUE,
+        type: 'wild',
+      }
+    );
+
+    // Doubler - doubles the score of the play (2 tiles)
+    this.bonePile.push(
+      {
+        left: SPECIAL_TILE_PIP_VALUE,
+        right: SPECIAL_TILE_PIP_VALUE,
+        type: 'doubler',
+      },
+      {
+        left: SPECIAL_TILE_PIP_VALUE,
+        right: SPECIAL_TILE_PIP_VALUE,
+        type: 'doubler',
+      }
+    );
+
+    // Odd Favor - bonus points for odd pip sums (1 tile)
+    this.bonePile.push({
+      left: SPECIAL_TILE_PIP_VALUE,
+      right: SPECIAL_TILE_PIP_VALUE,
+      type: 'odd-favor',
+    });
+
+    // Spinner - wildcard with rotation ability (1 tile)
+    this.bonePile.push({
+      left: SPECIAL_TILE_PIP_VALUE,
+      right: SPECIAL_TILE_PIP_VALUE,
+      type: 'spinner',
+    });
+
+    // Crusher - wildcard with crushing ability (1 tile)
+    this.bonePile.push({
+      left: SPECIAL_TILE_PIP_VALUE,
+      right: SPECIAL_TILE_PIP_VALUE,
+      type: 'crusher',
+    });
+
+    // Cheater - wildcard with rule-bending ability (1 tile)
+    this.bonePile.push({
+      left: SPECIAL_TILE_PIP_VALUE,
+      right: SPECIAL_TILE_PIP_VALUE,
+      type: 'cheater',
+    });
+
+    // Thief - steals points or tiles (1 tile)
+    this.bonePile.push({
+      left: SPECIAL_TILE_PIP_VALUE,
+      right: SPECIAL_TILE_PIP_VALUE,
+      type: 'thief',
+    });
+
+    // Blank Slate - resets certain game conditions (1 tile)
+    this.bonePile.push({
+      left: SPECIAL_TILE_PIP_VALUE,
+      right: SPECIAL_TILE_PIP_VALUE,
+      type: 'blank-slate',
+    });
   }
 
   /**
