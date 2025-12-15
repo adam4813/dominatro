@@ -1,68 +1,77 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { Domino } from './Domino.js';
+import { Domino } from './Domino';
+import type {
+  DominoData,
+  RackDomino,
+  PlacementZone,
+  GhostDomino,
+  PlacementSide,
+  DominoSelectedCallback,
+  DominoDeselectedCallback,
+  CanFlipDominoCallback,
+  GetPlacementOrientationCallback,
+  PlacementZoneClickCallback,
+} from '../types';
 
-const BOARD_PADDING = 1; // Extra space around the domino placements
+const BOARD_PADDING = 1;
 
+/**
+ * Manages the Three.js scene, camera, controls, and rendering
+ * Acts as a Facade for Three.js scene management
+ */
 export class Scene {
+  private scene: THREE.Scene;
+  private camera: THREE.PerspectiveCamera;
+  private renderer: THREE.WebGLRenderer;
+  private controls: OrbitControls;
+  private ground: THREE.Mesh | null = null;
+  private raycaster: THREE.Raycaster;
+  private mouse: THREE.Vector2;
+
+  // HUD rendering
+  private hudScene: THREE.Scene | null = null;
+  private hudCamera: THREE.OrthographicCamera | null = null;
+
+  // Interaction state
+  private selectedDomino: THREE.Group | null = null;
+  private selectedDominoData: DominoData | null = null;
+  private selectedDominoFlipped: boolean = false;
+  private hoveredObject: THREE.Group | null = null;
+  private hoveredZone: PlacementZone | null = null;
+  private ghostDomino: GhostDomino | null = null;
+
+  // Public for Game class access
+  rackDominoes: RackDomino[] = [];
+  private placementZones: PlacementZone[] = [];
+
+  // Ground boundaries
+  private groundMinX: number = -6;
+  private groundMaxX: number = 6;
+
+  // Mouse tracking
+  private mouseDownPosition: { x: number; y: number } | null = null;
+  private isDragging: boolean = false;
+
+  // Callbacks
+  onDominoSelectedCallback: DominoSelectedCallback | null = null;
+  onDominoDeselectedCallback: DominoDeselectedCallback | null = null;
+  canFlipDominoCallback: CanFlipDominoCallback | null = null;
+  getPlacementOrientationCallback: GetPlacementOrientationCallback | null =
+    null;
+
   constructor() {
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0x2a4d2a);
 
-    this.setupCamera();
-    this.setupRenderer();
+    this.camera = this.setupCamera();
+    this.renderer = this.setupRenderer();
     this.setupLights();
-    this.setupControls();
+    this.controls = this.setupControls();
     this.setupGround();
-    this.setupRaycaster();
 
-    // HUD rendering
-    this.hudScene = null;
-    this.hudCamera = null;
-
-    // State for interaction
-    this.selectedDomino = null;
-    this.selectedDominoData = null;
-    this.selectedDominoFlipped = false; // Track if selected domino is flipped
-    this.hoveredObject = null;
-    this.hoveredZone = null; // Track which placement zone is hovered
-    this.ghostDomino = null; // Ghost preview of domino at placement zone
-    this.rackDominoes = []; // Domino objects in the rack
-    this.placementZones = []; // Placement zone objects
-
-    /**
-     * Callback invoked when a domino is selected
-     * @callback onDominoSelectedCallback
-     * @param {Object} dominoData - The data of the selected domino {left, right, type}
-     */
-    this.onDominoSelectedCallback = null;
-
-    /**
-     * Callback invoked when a domino is deselected
-     * @callback onDominoDeselectedCallback
-     */
-    this.onDominoDeselectedCallback = null;
-
-    /**
-     * Callback to check if domino can be flipped
-     * @callback canFlipDominoCallback
-     * @param {Object} dominoData - The domino data
-     * @returns {boolean} - True if flip is allowed
-     */
-    this.canFlipDominoCallback = null;
-
-    /**
-     * Callback to get the correct placement orientation for a domino
-     * @callback getPlacementOrientationCallback
-     * @param {Object} dominoData - The domino data
-     * @param {string} side - 'left', 'right', or 'center'
-     * @returns {Object} - { left: number, right: number }
-     */
-    this.getPlacementOrientationCallback = null;
-
-    // Track mouse position for click vs drag detection
-    this.mouseDownPosition = null;
-    this.isDragging = false;
+    this.raycaster = new THREE.Raycaster();
+    this.mouse = new THREE.Vector2();
 
     this.handleResize = this.handleResize.bind(this);
     this.handleMouseMove = this.handleMouseMove.bind(this);
@@ -77,33 +86,31 @@ export class Scene {
     window.addEventListener('keydown', this.handleKeyDown);
   }
 
-  setupCamera() {
-    this.camera = new THREE.PerspectiveCamera(
+  private setupCamera(): THREE.PerspectiveCamera {
+    const camera = new THREE.PerspectiveCamera(
       75,
       window.innerWidth / window.innerHeight,
       0.1,
       1000
     );
-    // Camera positioned for top-down view (0, 15, 0)
-    // This initial position should be maintained as the default view
-    this.camera.position.set(0, 15, 0);
-    this.camera.lookAt(0, 0, 0);
+    camera.position.set(0, 15, 0);
+    camera.lookAt(0, 0, 0);
+    return camera;
   }
 
-  setupRenderer() {
-    this.renderer = new THREE.WebGLRenderer({ antialias: true });
-    this.renderer.setSize(window.innerWidth, window.innerHeight);
-    this.renderer.setPixelRatio(window.devicePixelRatio);
-    this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  private setupRenderer(): THREE.WebGLRenderer {
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    return renderer;
   }
 
-  setupLights() {
-    // Ambient light for overall illumination
+  private setupLights(): void {
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
     this.scene.add(ambientLight);
 
-    // Directional light for shadows and definition
     const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
     directionalLight.position.set(5, 10, 7);
     directionalLight.castShadow = true;
@@ -118,51 +125,41 @@ export class Scene {
     this.scene.add(directionalLight);
   }
 
-  setupControls() {
-    this.controls = new OrbitControls(this.camera, this.renderer.domElement);
+  private setupControls(): OrbitControls {
+    const controls = new OrbitControls(this.camera, this.renderer.domElement);
 
-    // Disable rotation
-    this.controls.enableRotate = false;
+    controls.enableRotate = false;
+    controls.enablePan = true;
+    controls.screenSpacePanning = true;
+    controls.enableZoom = true;
 
-    // Enable panning for both mouse and touch
-    this.controls.enablePan = true;
-    this.controls.screenSpacePanning = true;
-
-    // Enable zooming for both mouse wheel and pinch
-    this.controls.enableZoom = true;
-
-    // Touch controls configuration
-    this.controls.touches = {
-      ONE: THREE.TOUCH.PAN, // One finger drag to pan
-      TWO: THREE.TOUCH.DOLLY_PAN, // Two finger pinch to zoom, drag to pan
+    controls.touches = {
+      ONE: THREE.TOUCH.PAN,
+      TWO: THREE.TOUCH.DOLLY_PAN,
     };
 
-    // Damping for smooth controls
-    this.controls.enableDamping = true;
-    this.controls.dampingFactor = 0.05;
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+    controls.minDistance = 5;
+    controls.maxDistance = 30;
 
-    // Zoom limits
-    this.controls.minDistance = 5;
-    this.controls.maxDistance = 30;
+    // @ts-expect-error - OrbitControls minPan/maxPan are not in types but work
+    controls.minPan = new THREE.Vector3(-6, 0, -10);
+    // @ts-expect-error - OrbitControls minPan/maxPan are not in types but work
+    controls.maxPan = new THREE.Vector3(6, 0, 10);
 
-    // Initial pan limits (match initial small ground size)
-    this.controls.minPan = new THREE.Vector3(-6, 0, -10);
-    this.controls.maxPan = new THREE.Vector3(6, 0, 10);
+    return controls;
   }
 
-  /**
-   * Update camera pan limits based on board width
-   * @param {number} minX - Minimum X position on the board
-   * @param {number} maxX - Maximum X position on the board
-   */
-  updatePanLimits(minX, maxX) {
-    const padding = 5; // Extra padding beyond the board edges
+  updatePanLimits(minX: number, maxX: number): void {
+    const padding = 5;
+    // @ts-expect-error - OrbitControls minPan/maxPan are not in types but work
     this.controls.minPan = new THREE.Vector3(minX - padding, 0, -10);
+    // @ts-expect-error - OrbitControls minPan/maxPan are not in types but work
     this.controls.maxPan = new THREE.Vector3(maxX + padding, 0, 10);
   }
 
-  setupGround() {
-    // Create a table/ground surface - start small, ~6 domino widths
+  private setupGround(): void {
     const groundGeometry = new THREE.PlaneGeometry(12, 20);
     const groundMaterial = new THREE.MeshStandardMaterial({
       color: 0x1a3a1a,
@@ -173,59 +170,41 @@ export class Scene {
     this.ground.rotation.x = -Math.PI / 2;
     this.ground.receiveShadow = true;
     this.scene.add(this.ground);
-
-    // Track ground boundaries to avoid shifting when expanding
-    this.groundMinX = -6;
-    this.groundMaxX = 6;
   }
 
-  /**
-   * Update ground size based on board width
-   * Only expands on the side that needs it
-   * @param {number} minX - Minimum X position on the board
-   * @param {number} maxX - Maximum X position on the board
-   */
-  updateGroundSize(minX, maxX) {
-    const dominoWidth = 2; // Approximate horizontal domino width
+  updateGroundSize(minX: number, maxX: number): void {
+    const dominoWidth = 2;
     const edgeBuffer = dominoWidth * BOARD_PADDING;
 
     let needsUpdate = false;
     let newMinX = this.groundMinX;
     let newMaxX = this.groundMaxX;
 
-    // Check if we need to expand left
     if (minX - edgeBuffer < this.groundMinX) {
-      newMinX = minX - edgeBuffer - 2; // Add 2 extra to avoid constant resizing
+      newMinX = minX - edgeBuffer - 2;
       needsUpdate = true;
     }
 
-    // Check if we need to expand right
     if (maxX + edgeBuffer > this.groundMaxX) {
-      newMaxX = maxX + edgeBuffer + 2; // Add 2 extra to avoid constant resizing
+      newMaxX = maxX + edgeBuffer + 2;
       needsUpdate = true;
     }
 
-    if (!needsUpdate) {
-      return; // No expansion needed
-    }
+    if (!needsUpdate) return;
 
-    // Update boundaries
     this.groundMinX = newMinX;
     this.groundMaxX = newMaxX;
 
-    // Calculate new dimensions
     const newWidth = newMaxX - newMinX;
-    const depth = 20; // Keep depth constant
+    const depth = 20;
     const centerX = (newMinX + newMaxX) / 2;
 
-    // Remove old ground
     if (this.ground) {
       this.scene.remove(this.ground);
       this.ground.geometry.dispose();
-      this.ground.material.dispose(); // Prevent memory leak
+      (this.ground.material as THREE.Material).dispose();
     }
 
-    // Create new ground with updated size
     const groundGeometry = new THREE.PlaneGeometry(newWidth, depth);
     const groundMaterial = new THREE.MeshStandardMaterial({
       color: 0x1a3a1a,
@@ -240,51 +219,38 @@ export class Scene {
     this.scene.add(this.ground);
   }
 
-  setupRaycaster() {
-    this.raycaster = new THREE.Raycaster();
-    this.mouse = new THREE.Vector2();
-  }
-
-  handleMouseDown(event) {
-    // Record mouse position to detect drag vs click
-    this.mouseDownPosition = {
-      x: event.clientX,
-      y: event.clientY,
-    };
+  private handleMouseDown(event: MouseEvent): void {
+    this.mouseDownPosition = { x: event.clientX, y: event.clientY };
     this.isDragging = false;
   }
 
-  handleMouseMove(event) {
-    // Calculate mouse position in normalized device coordinates (-1 to +1)
+  private handleMouseMove(event: MouseEvent): void {
     this.mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
     this.mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
-    // Detect if user is dragging (for OrbitControls)
     if (this.mouseDownPosition) {
       const dx = event.clientX - this.mouseDownPosition.x;
       const dy = event.clientY - this.mouseDownPosition.y;
       const distance = Math.sqrt(dx * dx + dy * dy);
       if (distance > 5) {
-        // 5px threshold
         this.isDragging = true;
       }
     }
 
-    // Update raycaster
     this.raycaster.setFromCamera(this.mouse, this.camera);
 
-    // Check for placement zone hover (if domino is selected)
+    // Check for placement zone hover
     if (this.selectedDomino && this.placementZones.length > 0) {
       const zoneMeshes = this.placementZones.map((z) => z.mesh);
       const zoneIntersects = this.raycaster.intersectObjects(zoneMeshes, false);
 
       if (zoneIntersects.length > 0) {
         const hoveredZone = this.placementZones.find(
-          (z) => z.mesh === zoneIntersects[0].object
+          (z) => z.mesh === zoneIntersects[0]?.object
         );
-        if (hoveredZone !== this.hoveredZone) {
+        if (hoveredZone && hoveredZone !== this.hoveredZone) {
           this.hoveredZone = hoveredZone;
-          if (hoveredZone && hoveredZone.isValid) {
+          if (hoveredZone.isValid) {
             this.updateGhostDomino(hoveredZone);
           } else {
             this.clearGhostDomino();
@@ -298,20 +264,18 @@ export class Scene {
       }
     }
 
-    // Check for intersections with rack dominoes
+    // Check for rack domino hover
     const rackMeshes = this.rackDominoes.map((d) => d.mesh);
     const intersects = this.raycaster.intersectObjects(rackMeshes, true);
 
-    // Reset previous hover state
     if (this.hoveredObject && !this.selectedDomino) {
       this.clearHighlight(this.hoveredObject);
       this.hoveredObject = null;
     }
 
-    // Highlight hovered domino (only if nothing is selected)
     if (intersects.length > 0 && !this.selectedDomino) {
       const hoveredMesh = this.findParentDomino(
-        intersects[0].object,
+        intersects[0]!.object,
         rackMeshes
       );
       if (hoveredMesh) {
@@ -321,60 +285,54 @@ export class Scene {
     }
   }
 
-  handleMouseClick(event) {
-    // Ignore clicks that are actually drags (from OrbitControls)
+  private handleMouseClick(event: MouseEvent): void {
     if (this.isDragging) {
       this.isDragging = false;
       this.mouseDownPosition = null;
       return;
     }
 
-    // Update mouse position first
     this.mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
     this.mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-
-    // Update raycaster
     this.raycaster.setFromCamera(this.mouse, this.camera);
 
-    // Check if clicking on a placement zone
+    // Check placement zone click
     if (this.selectedDomino && this.placementZones.length > 0) {
       const zoneMeshes = this.placementZones.map((z) => z.mesh);
       const zoneIntersects = this.raycaster.intersectObjects(zoneMeshes, false);
 
       if (zoneIntersects.length > 0) {
         const clickedZone = this.placementZones.find(
-          (z) => z.mesh === zoneIntersects[0].object
+          (z) => z.mesh === zoneIntersects[0]?.object
         );
-        if (clickedZone && clickedZone.onClickCallback) {
+        if (clickedZone?.onClickCallback) {
           clickedZone.onClickCallback(clickedZone.side, clickedZone.isValid);
         }
         return;
       }
     }
 
-    // Check for clicking on rack dominoes
+    // Check rack domino click
     const rackMeshes = this.rackDominoes.map((d) => d.mesh);
     const intersects = this.raycaster.intersectObjects(rackMeshes, true);
 
     if (intersects.length > 0) {
       const clickedMesh = this.findParentDomino(
-        intersects[0].object,
+        intersects[0]!.object,
         rackMeshes
       );
       if (clickedMesh) {
         this.selectDomino(clickedMesh);
       }
     } else {
-      // Clicked on empty space - deselect
       this.deselectDomino();
     }
 
-    // Reset drag tracking
     this.mouseDownPosition = null;
     this.isDragging = false;
   }
 
-  handleKeyDown(event) {
+  private handleKeyDown(event: KeyboardEvent): void {
     if (event.key === 'Escape') {
       this.deselectDomino();
     } else if (
@@ -382,16 +340,14 @@ export class Scene {
       this.selectedDomino &&
       this.selectedDominoData
     ) {
-      // Flip the selected domino
-      event.preventDefault(); // Prevent page scroll
+      event.preventDefault();
       this.flipSelectedDomino();
     }
   }
 
-  flipSelectedDomino() {
+  private flipSelectedDomino(): void {
     if (!this.selectedDominoData) return;
 
-    // Check if flip is allowed
     if (
       this.canFlipDominoCallback &&
       !this.canFlipDominoCallback(this.selectedDominoData)
@@ -400,10 +356,8 @@ export class Scene {
       return;
     }
 
-    // Toggle flipped state (though currently unused, kept for potential future use)
     this.selectedDominoFlipped = !this.selectedDominoFlipped;
 
-    // Swap left and right in a copy of the data to avoid mutating the original
     this.selectedDominoData = {
       ...this.selectedDominoData,
       left: this.selectedDominoData.right,
@@ -414,54 +368,51 @@ export class Scene {
       `Scene: Flipped domino to [${this.selectedDominoData.left}|${this.selectedDominoData.right}]`
     );
 
-    // Notify callback first (for updating placement zones)
     if (this.onDominoSelectedCallback) {
       this.onDominoSelectedCallback(this.selectedDominoData);
     }
 
-    // Then update ghost domino if visible - force re-check of hover
     if (this.hoveredZone) {
       this.updateGhostDomino(this.hoveredZone);
     }
   }
 
-  findParentDomino(object, dominoMeshes) {
-    // Traverse up to find the parent domino group
-    let current = object;
+  private findParentDomino(
+    object: THREE.Object3D,
+    dominoMeshes: THREE.Group[]
+  ): THREE.Group | null {
+    let current: THREE.Object3D | null = object;
     while (current) {
-      if (dominoMeshes.includes(current)) {
-        return current;
+      if (dominoMeshes.includes(current as THREE.Group)) {
+        return current as THREE.Group;
       }
       current = current.parent;
     }
     return null;
   }
 
-  selectDomino(dominoMesh) {
+  private selectDomino(dominoMesh: THREE.Group): void {
     const dominoObj = this.rackDominoes.find((d) => d.mesh === dominoMesh);
     if (!dominoObj) return;
 
-    // Deselect previous domino
     if (this.selectedDomino && this.selectedDomino !== dominoMesh) {
       this.clearHighlight(this.selectedDomino);
     }
 
     this.selectedDomino = dominoMesh;
     this.selectedDominoData = dominoObj.data;
-    this.selectedDominoFlipped = false; // Reset flip state on selection
+    this.selectedDominoFlipped = false;
 
-    // Highlight selected domino
     this.highlightDomino(dominoMesh, 0xffff00, 0.5);
 
     console.log('Scene: Selected domino:', this.selectedDominoData);
 
-    // Notify callback if set
     if (this.onDominoSelectedCallback) {
       this.onDominoSelectedCallback(dominoObj.data);
     }
   }
 
-  deselectDomino() {
+  deselectDomino(): void {
     if (this.selectedDomino) {
       this.clearHighlight(this.selectedDomino);
       this.selectedDomino = null;
@@ -470,60 +421,68 @@ export class Scene {
 
       console.log('Scene: Deselected domino');
 
-      // Clear ghost domino
       this.clearGhostDomino();
       this.hoveredZone = null;
-
-      // Clear placement zones
       this.clearPlacementZones();
 
-      // Notify callback if set
       if (this.onDominoDeselectedCallback) {
         this.onDominoDeselectedCallback();
       }
     }
   }
 
-  highlightDomino(dominoMesh, color, intensity) {
+  private highlightDomino(
+    dominoMesh: THREE.Group,
+    color: number,
+    intensity: number
+  ): void {
     dominoMesh.traverse((child) => {
-      if (child.isMesh && child.material) {
-        // Clone material if it's shared (static) to avoid affecting other dominoes
+      if (child instanceof THREE.Mesh && child.material) {
+        const material = child.material as THREE.MeshStandardMaterial;
+
         if (
-          child.material === Domino.bodyMaterial ||
-          child.material === Domino.lineMaterial ||
-          child.material === Domino.pipMaterial
+          material === Domino.bodyMaterial ||
+          material === Domino.lineMaterial ||
+          material === Domino.pipMaterial
         ) {
-          child.material = child.material.clone();
+          child.material = material.clone();
         }
 
-        // Store original material properties if not already stored
+        const clonedMaterial = child.material as THREE.MeshStandardMaterial;
         if (!child.userData.originalEmissive) {
-          child.userData.originalEmissive = child.material.emissive.clone();
+          child.userData.originalEmissive = clonedMaterial.emissive.clone();
           child.userData.originalEmissiveIntensity =
-            child.material.emissiveIntensity || 0;
+            clonedMaterial.emissiveIntensity || 0;
         }
-        child.material.emissive.setHex(color);
-        child.material.emissiveIntensity = intensity;
+        clonedMaterial.emissive.setHex(color);
+        clonedMaterial.emissiveIntensity = intensity;
       }
     });
   }
 
-  clearHighlight(dominoMesh) {
+  private clearHighlight(dominoMesh: THREE.Group): void {
     dominoMesh.traverse((child) => {
-      if (child.isMesh && child.material && child.userData.originalEmissive) {
-        child.material.emissive.copy(child.userData.originalEmissive);
-        child.material.emissiveIntensity =
-          child.userData.originalEmissiveIntensity;
-        // Clean up userData to prevent memory leaks
-        delete child.userData.originalEmissive;
-        delete child.userData.originalEmissiveIntensity;
+      if (child instanceof THREE.Mesh && child.material) {
+        const material = child.material as THREE.MeshStandardMaterial;
+        if (child.userData.originalEmissive) {
+          material.emissive.copy(child.userData.originalEmissive);
+          material.emissiveIntensity = child.userData.originalEmissiveIntensity;
+          delete child.userData.originalEmissive;
+          delete child.userData.originalEmissiveIntensity;
+        }
       }
     });
   }
 
-  createPlacementZone(side, x, z, isValid, onClickCallback, isDouble = false) {
-    // Validate side parameter
-    const validSides = ['left', 'right', 'center'];
+  createPlacementZone(
+    side: PlacementSide,
+    x: number,
+    z: number,
+    isValid: boolean,
+    onClickCallback: PlacementZoneClickCallback,
+    isDouble: boolean = false
+  ): PlacementZone | null {
+    const validSides: PlacementSide[] = ['left', 'right', 'center'];
     if (!validSides.includes(side)) {
       console.error(
         `Scene: Invalid side parameter "${side}". Must be one of: ${validSides.join(', ')}`
@@ -531,14 +490,12 @@ export class Scene {
       return null;
     }
 
-    // Horizontal orientation for regular dominoes, vertical for doubles
-    // Swap dimensions for doubles to show vertical placement
     const geometry = isDouble
       ? new THREE.BoxGeometry(1.5, 0.5, 2.5)
       : new THREE.BoxGeometry(2.5, 0.5, 1.5);
     const color = isValid ? 0x00ff00 : 0xff0000;
     const material = new THREE.MeshStandardMaterial({
-      color: color,
+      color,
       emissive: color,
       emissiveIntensity: 0.6,
       transparent: true,
@@ -546,39 +503,33 @@ export class Scene {
     });
 
     const mesh = new THREE.Mesh(geometry, material);
-    mesh.position.set(x, 0.25, z); // Raised slightly higher
+    mesh.position.set(x, 0.25, z);
     this.scene.add(mesh);
 
-    const zone = { mesh, side, isValid, onClickCallback };
+    const zone: PlacementZone = { mesh, side, isValid, onClickCallback };
     this.placementZones.push(zone);
 
     return zone;
   }
 
-  clearPlacementZones() {
+  clearPlacementZones(): void {
     this.placementZones.forEach((zone) => {
       this.scene.remove(zone.mesh);
       zone.mesh.geometry.dispose();
-      zone.mesh.material.dispose();
+      (zone.mesh.material as THREE.Material).dispose();
     });
     this.placementZones = [];
     this.clearGhostDomino();
   }
 
-  /**
-   * Update ghost domino preview at placement zone
-   * @param {Object} zone - The placement zone being hovered
-   */
-  updateGhostDomino(zone) {
+  private updateGhostDomino(zone: PlacementZone): void {
     if (!this.selectedDominoData || !zone.isValid) {
       this.clearGhostDomino();
       return;
     }
 
-    // Clear existing ghost
     this.clearGhostDomino();
 
-    // Get the correct orientation for placement
     let dominoToShow = { ...this.selectedDominoData };
     if (this.getPlacementOrientationCallback) {
       dominoToShow = this.getPlacementOrientationCallback(
@@ -587,27 +538,22 @@ export class Scene {
       );
     }
 
-    // Create ghost domino with the correctly oriented pips
     const ghostDomino = new Domino(dominoToShow.left, dominoToShow.right);
-
     const isDouble = dominoToShow.left === dominoToShow.right;
     const mesh = ghostDomino.getMesh();
 
-    // Position at the zone
     mesh.position.copy(zone.mesh.position);
-    mesh.position.y = 0.1; // Same height as placed dominoes
+    mesh.position.y = 0.1;
 
-    // Rotate if not a double
     if (!isDouble) {
       mesh.rotation.set(0, Math.PI / 2, 0);
     }
 
-    // Make it semi-transparent
     mesh.traverse((child) => {
-      if (child.isMesh && child.material) {
-        child.material = child.material.clone();
-        child.material.transparent = true;
-        child.material.opacity = 0.5;
+      if (child instanceof THREE.Mesh && child.material) {
+        child.material = (child.material as THREE.Material).clone();
+        (child.material as THREE.MeshStandardMaterial).transparent = true;
+        (child.material as THREE.MeshStandardMaterial).opacity = 0.5;
       }
     });
 
@@ -615,17 +561,13 @@ export class Scene {
     this.scene.add(mesh);
   }
 
-  /**
-   * Clear the ghost domino preview
-   */
-  clearGhostDomino() {
+  private clearGhostDomino(): void {
     if (this.ghostDomino) {
-      // Dispose of cloned materials to prevent memory leaks
-      this.ghostDomino.mesh.traverse((child) => {
-        if (child.isMesh && child.material) {
-          // Only dispose if it's a cloned material (has opacity set)
-          if (child.material.opacity === 0.5) {
-            child.material.dispose();
+      this.ghostDomino.mesh.traverse((child: THREE.Object3D) => {
+        if (child instanceof THREE.Mesh && child.material) {
+          const material = child.material as THREE.MeshStandardMaterial;
+          if (material.opacity === 0.5) {
+            material.dispose();
           }
         }
       });
@@ -636,28 +578,26 @@ export class Scene {
     }
   }
 
-  add(object) {
+  add(object: THREE.Object3D): void {
     this.scene.add(object);
   }
 
-  remove(object) {
+  remove(object: THREE.Object3D): void {
     this.scene.remove(object);
   }
 
-  handleResize() {
+  private handleResize(): void {
     this.camera.aspect = window.innerWidth / window.innerHeight;
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(window.innerWidth, window.innerHeight);
   }
 
-  render() {
+  render(): void {
     this.controls.update();
 
-    // Render the main 3D scene
     this.renderer.autoClear = true;
     this.renderer.render(this.scene, this.camera);
 
-    // Render the HUD on top (screen-space overlay)
     if (this.hudScene && this.hudCamera) {
       this.renderer.autoClear = false;
       try {
@@ -668,37 +608,27 @@ export class Scene {
     }
   }
 
-  getCanvas() {
+  getCanvas(): HTMLCanvasElement {
     return this.renderer.domElement;
   }
 
-  /**
-   * Returns the underlying THREE.Scene instance
-   * @returns {THREE.Scene} The Three.js scene object
-   */
-  getScene() {
+  getScene(): THREE.Scene {
     return this.scene;
   }
 
-  /**
-   * Returns the camera used in the scene
-   * @returns {THREE.PerspectiveCamera} The Three.js perspective camera
-   */
-  getCamera() {
+  getCamera(): THREE.PerspectiveCamera {
     return this.camera;
   }
 
-  /**
-   * Set the HUD scene and camera for overlay rendering
-   * @param {THREE.Scene} hudScene - The HUD scene
-   * @param {THREE.OrthographicCamera} hudCamera - The HUD camera
-   */
-  setHUD(hudScene, hudCamera) {
+  setHUD(
+    hudScene: THREE.Scene | null,
+    hudCamera: THREE.OrthographicCamera | null
+  ): void {
     this.hudScene = hudScene;
     this.hudCamera = hudCamera;
   }
 
-  destroy() {
+  destroy(): void {
     window.removeEventListener('resize', this.handleResize);
     window.removeEventListener('mousemove', this.handleMouseMove);
     window.removeEventListener('mousedown', this.handleMouseDown);
@@ -708,7 +638,7 @@ export class Scene {
     this.controls.dispose();
     if (this.ground) {
       this.ground.geometry.dispose();
-      this.ground.material.dispose();
+      (this.ground.material as THREE.Material).dispose();
     }
     this.clearGhostDomino();
     this.clearPlacementZones();

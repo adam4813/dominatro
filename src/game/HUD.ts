@@ -1,129 +1,87 @@
 import * as THREE from 'three';
+import type {
+  DominoData,
+  PipPosition,
+  CanvasContext,
+  HUDCanvases,
+} from '../types';
+import type { GameState } from './GameState';
 
 /**
  * HUD (Heads-Up Display) class for rendering game information on canvas
  *
  * Displays player score, match progression, bone pile count, and player rack
  * using Three.js sprites with dynamically rendered canvas textures.
- *
- * @class HUD
  */
 export class HUD {
   // Constants for HUD layout and styling
-  static PANEL_SCORE_WIDTH = 200;
-  static PANEL_SCORE_HEIGHT = 120;
-  static PANEL_PROGRESSION_WIDTH = 280;
-  static PANEL_PROGRESSION_HEIGHT = 120;
-  static PANEL_BONE_PILE_WIDTH = 200;
-  static PANEL_BONE_PILE_HEIGHT = 120;
-  static PANEL_RACK_WIDTH = 800;
-  static PANEL_RACK_HEIGHT = 200;
+  private static readonly PANEL_SCORE_WIDTH = 200;
+  private static readonly PANEL_SCORE_HEIGHT = 120;
+  private static readonly PANEL_PROGRESSION_WIDTH = 280;
+  private static readonly PANEL_PROGRESSION_HEIGHT = 120;
+  private static readonly PANEL_BONE_PILE_WIDTH = 200;
+  private static readonly PANEL_BONE_PILE_HEIGHT = 120;
+  private static readonly PANEL_RACK_WIDTH = 800;
+  private static readonly PANEL_RACK_HEIGHT = 200;
 
-  static FONT_LABEL = 'bold 16px Arial';
-  static FONT_VALUE_LARGE = 'bold 42px Arial';
-  static FONT_VALUE_MEDIUM = 'bold 32px Arial';
-  static FONT_VALUE_SMALL = '18px Arial';
-  static FONT_VALUE_SMALL_BOLD = 'bold 18px Arial';
+  private static readonly FONT_LABEL = 'bold 16px Arial';
+  private static readonly FONT_VALUE_LARGE = 'bold 42px Arial';
+  private static readonly FONT_VALUE_MEDIUM = 'bold 32px Arial';
+  private static readonly FONT_VALUE_SMALL = '18px Arial';
+  private static readonly FONT_VALUE_SMALL_BOLD = 'bold 18px Arial';
 
-  static COLOR_BG = 'rgba(0, 0, 0, 0.7)';
-  static COLOR_BORDER = 'rgba(255, 255, 255, 0.3)';
-  static COLOR_LABEL = 'rgba(255, 255, 255, 0.7)';
-  static COLOR_VALUE = '#ffffff';
-  static COLOR_TARGET = '#ffd700';
-  static COLOR_TILE_BG = '#f5f5dc';
-  static COLOR_TILE_BORDER = '#333333';
-  static COLOR_PIP = '#222222';
+  private static readonly COLOR_BG = 'rgba(0, 0, 0, 0.7)';
+  private static readonly COLOR_BORDER = 'rgba(255, 255, 255, 0.3)';
+  private static readonly COLOR_LABEL = 'rgba(255, 255, 255, 0.7)';
+  private static readonly COLOR_VALUE = '#ffffff';
+  private static readonly COLOR_TARGET = '#ffd700';
+  private static readonly COLOR_TILE_BG = '#f5f5dc';
+  private static readonly COLOR_TILE_BORDER = '#333333';
+  private static readonly COLOR_PIP = '#222222';
 
-  static SPRITE_SCALE_NORMAL_X = 2;
-  static SPRITE_SCALE_NORMAL_Y = 1.2;
-  static SPRITE_SCALE_RACK_X = 8;
-  static SPRITE_SCALE_RACK_Y = 2;
+  private static readonly SPRITE_SCALE_NORMAL_X = 2;
+  private static readonly SPRITE_SCALE_NORMAL_Y = 1.2;
+  private static readonly SPRITE_SCALE_RACK_X = 8;
+  private static readonly SPRITE_SCALE_RACK_Y = 2;
 
-  static TILE_WIDTH = 80;
-  static TILE_HEIGHT = 120;
-  static TILE_SPACING = 15;
-  static PIP_SIZE = 18;
+  private static readonly TILE_WIDTH = 80;
+  private static readonly TILE_HEIGHT = 120;
+  private static readonly TILE_SPACING = 15;
+  private static readonly PIP_SIZE = 18;
 
   // Sprite indices
-  static SPRITE_INDEX_SCORE = 0;
-  static SPRITE_INDEX_PROGRESSION = 1;
-  static SPRITE_INDEX_BONE_PILE = 2;
-  static SPRITE_INDEX_RACK = 3;
+  private static readonly SPRITE_INDEX_SCORE = 0;
+  private static readonly SPRITE_INDEX_PROGRESSION = 1;
+  private static readonly SPRITE_INDEX_BONE_PILE = 2;
+  private static readonly SPRITE_INDEX_RACK = 3;
 
-  /**
-   * Creates a new HUD instance
-   * @param {GameState} gameState - The game state object to display information from
-   */
-  constructor(gameState) {
+  private gameState: GameState;
+  private sprites: THREE.Sprite[] = [];
+  private canvases: HUDCanvases = {};
+  private hudScene: THREE.Scene;
+  private hudCamera: THREE.OrthographicCamera;
+
+  constructor(gameState: GameState) {
     this.gameState = gameState;
-    this.sprites = [];
-    this.canvases = {};
     this.handleResize = this.handleResize.bind(this);
 
     // Create a separate scene and orthographic camera for HUD rendering
     this.hudScene = new THREE.Scene();
     this.hudCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
 
-    // Create accessibility elements for screen readers
-    this.createAccessibilityElements();
-
     this.createHUD();
     window.addEventListener('resize', this.handleResize);
   }
 
-  /**
-   * Create hidden ARIA live regions for screen reader accessibility
-   */
-  createAccessibilityElements() {
-    // Create container for accessibility elements
-    this.ariaContainer = document.createElement('div');
-    this.ariaContainer.id = 'hud-aria-container';
-    this.ariaContainer.style.position = 'absolute';
-    this.ariaContainer.style.left = '-10000px';
-    this.ariaContainer.style.width = '1px';
-    this.ariaContainer.style.height = '1px';
-    this.ariaContainer.style.overflow = 'hidden';
-
-    // Score
-    this.ariaScore = document.createElement('div');
-    this.ariaScore.setAttribute('role', 'status');
-    this.ariaScore.setAttribute('aria-live', 'polite');
-    this.ariaScore.setAttribute('aria-label', 'Score');
-    this.ariaContainer.appendChild(this.ariaScore);
-
-    // Progression
-    this.ariaProgression = document.createElement('div');
-    this.ariaProgression.setAttribute('role', 'status');
-    this.ariaProgression.setAttribute('aria-live', 'polite');
-    this.ariaProgression.setAttribute('aria-label', 'Match progression');
-    this.ariaContainer.appendChild(this.ariaProgression);
-
-    // Bone pile
-    this.ariaBonePile = document.createElement('div');
-    this.ariaBonePile.setAttribute('role', 'status');
-    this.ariaBonePile.setAttribute('aria-live', 'polite');
-    this.ariaBonePile.setAttribute('aria-label', 'Bone pile');
-    this.ariaContainer.appendChild(this.ariaBonePile);
-
-    // Rack
-    this.ariaRack = document.createElement('div');
-    this.ariaRack.setAttribute('role', 'status');
-    this.ariaRack.setAttribute('aria-live', 'polite');
-    this.ariaRack.setAttribute('aria-label', 'Your hand');
-    this.ariaContainer.appendChild(this.ariaRack);
-
-    document.body.appendChild(this.ariaContainer);
-  }
-
-  createCanvasTexture(width, height) {
+  private createCanvasTexture(width: number, height: number): CanvasContext {
     const canvas = document.createElement('canvas');
     canvas.width = width;
     canvas.height = height;
-    const context = canvas.getContext('2d');
+    const context = canvas.getContext('2d')!;
     return { canvas, context };
   }
 
-  createHUD() {
+  private createHUD(): void {
     const positions = this.calculatePositions();
 
     // Create score panel (top-left)
@@ -203,24 +161,22 @@ export class HUD {
     this.updateAll();
   }
 
-  /**
-   * Calculate HUD panel positions in normalized screen coordinates (-1 to 1)
-   * @returns {Object} Object containing position coordinates for HUD panels
-   */
-  calculatePositions() {
+  private calculatePositions(): {
+    topY: number;
+    bottomY: number;
+    leftX: number;
+    rightX: number;
+  } {
     // Position panels at edges of the screen in normalized coordinates
-    const topY = 0.85; // Near top edge
-    const bottomY = -0.85; // Near bottom edge
-    const leftX = -0.85; // Near left edge
-    const rightX = 0.85; // Near right edge
+    const topY = 0.85;
+    const bottomY = -0.85;
+    const leftX = -0.85;
+    const rightX = 0.85;
 
     return { topY, bottomY, leftX, rightX };
   }
 
-  /**
-   * Handle window resize events by updating sprite positions
-   */
-  handleResize() {
+  private handleResize(): void {
     const positions = this.calculatePositions();
 
     // Update sprite positions
@@ -250,7 +206,11 @@ export class HUD {
     }
   }
 
-  createSprite(canvas, x, y) {
+  private createSprite(
+    canvas: HTMLCanvasElement,
+    x: number,
+    y: number
+  ): THREE.Sprite {
     const texture = new THREE.CanvasTexture(canvas);
     texture.needsUpdate = true;
     const material = new THREE.SpriteMaterial({
@@ -269,14 +229,12 @@ export class HUD {
     return sprite;
   }
 
-  drawScorePanel(ctx, score) {
+  private drawScorePanel(ctx: CanvasRenderingContext2D, score: number): void {
     const width = ctx.canvas.width;
     const height = ctx.canvas.height;
 
-    // Clear canvas
     ctx.clearRect(0, 0, width, height);
 
-    // Draw background
     ctx.fillStyle = HUD.COLOR_BG;
     ctx.strokeStyle = HUD.COLOR_BORDER;
     ctx.lineWidth = 3;
@@ -284,26 +242,27 @@ export class HUD {
     ctx.fill();
     ctx.stroke();
 
-    // Draw label
     ctx.fillStyle = HUD.COLOR_LABEL;
     ctx.font = HUD.FONT_LABEL;
     ctx.textAlign = 'center';
     ctx.fillText('SCORE', width / 2, 35);
 
-    // Draw value
     ctx.fillStyle = HUD.COLOR_VALUE;
     ctx.font = HUD.FONT_VALUE_LARGE;
     ctx.fillText(score.toLocaleString(), width / 2, 85);
   }
 
-  drawProgressionPanel(ctx, currentPull, totalPulls, targetScore) {
+  private drawProgressionPanel(
+    ctx: CanvasRenderingContext2D,
+    currentPull: number,
+    totalPulls: number,
+    targetScore: number
+  ): void {
     const width = ctx.canvas.width;
     const height = ctx.canvas.height;
 
-    // Clear canvas
     ctx.clearRect(0, 0, width, height);
 
-    // Draw background
     ctx.fillStyle = HUD.COLOR_BG;
     ctx.strokeStyle = HUD.COLOR_BORDER;
     ctx.lineWidth = 3;
@@ -311,13 +270,11 @@ export class HUD {
     ctx.fill();
     ctx.stroke();
 
-    // Draw pull text
     ctx.fillStyle = HUD.COLOR_VALUE;
     ctx.font = HUD.FONT_VALUE_MEDIUM;
     ctx.textAlign = 'center';
     ctx.fillText(`Pull ${currentPull}/${totalPulls}`, width / 2, 50);
 
-    // Draw target
     ctx.fillStyle = HUD.COLOR_LABEL;
     ctx.font = HUD.FONT_VALUE_SMALL;
     ctx.fillText('Target: ', width / 2 - 30, 85);
@@ -326,14 +283,15 @@ export class HUD {
     ctx.fillText(targetScore.toLocaleString(), width / 2 + 30, 85);
   }
 
-  drawBonePilePanel(ctx, count) {
+  private drawBonePilePanel(
+    ctx: CanvasRenderingContext2D,
+    count: number
+  ): void {
     const width = ctx.canvas.width;
     const height = ctx.canvas.height;
 
-    // Clear canvas
     ctx.clearRect(0, 0, width, height);
 
-    // Draw background
     ctx.fillStyle = HUD.COLOR_BG;
     ctx.strokeStyle = HUD.COLOR_BORDER;
     ctx.lineWidth = 3;
@@ -341,37 +299,34 @@ export class HUD {
     ctx.fill();
     ctx.stroke();
 
-    // Draw label
     ctx.fillStyle = HUD.COLOR_LABEL;
     ctx.font = HUD.FONT_LABEL;
     ctx.textAlign = 'center';
     ctx.fillText('BONE PILE', width / 2, 35);
 
-    // Draw value
     ctx.fillStyle = HUD.COLOR_VALUE;
     ctx.font = HUD.FONT_VALUE_LARGE;
     ctx.fillText(count.toString(), width / 2, 85);
   }
 
-  drawRackPanel(ctx, tiles) {
+  private drawRackPanel(
+    ctx: CanvasRenderingContext2D,
+    tiles: DominoData[]
+  ): void {
     const width = ctx.canvas.width;
     const height = ctx.canvas.height;
 
-    // Clear canvas
     ctx.clearRect(0, 0, width, height);
 
-    // Draw semi-transparent background
     ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
     this.roundRect(ctx, 10, 10, width - 20, height - 20, 15);
     ctx.fill();
 
-    // Draw label
     ctx.fillStyle = HUD.COLOR_LABEL;
     ctx.font = HUD.FONT_VALUE_SMALL_BOLD;
     ctx.textAlign = 'center';
     ctx.fillText('YOUR HAND', width / 2, 35);
 
-    // Draw tiles
     if (tiles.length === 0) return;
 
     const totalWidth =
@@ -393,8 +348,15 @@ export class HUD {
     });
   }
 
-  drawDominoTile(ctx, x, y, width, height, leftPips, rightPips) {
-    // Draw tile background
+  private drawDominoTile(
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    leftPips: number,
+    rightPips: number
+  ): void {
     ctx.fillStyle = HUD.COLOR_TILE_BG;
     ctx.strokeStyle = HUD.COLOR_TILE_BORDER;
     ctx.lineWidth = 3;
@@ -402,7 +364,6 @@ export class HUD {
     ctx.fill();
     ctx.stroke();
 
-    // Draw center divider
     ctx.strokeStyle = HUD.COLOR_TILE_BORDER;
     ctx.lineWidth = 2;
     ctx.beginPath();
@@ -410,7 +371,6 @@ export class HUD {
     ctx.lineTo(x + width, y + height / 2);
     ctx.stroke();
 
-    // Draw pips
     this.drawPips(ctx, x + width / 2, y + height / 4, leftPips, HUD.PIP_SIZE);
     this.drawPips(
       ctx,
@@ -421,7 +381,13 @@ export class HUD {
     );
   }
 
-  drawPips(ctx, centerX, centerY, count, size) {
+  private drawPips(
+    ctx: CanvasRenderingContext2D,
+    centerX: number,
+    centerY: number,
+    count: number,
+    size: number
+  ): void {
     ctx.fillStyle = HUD.COLOR_PIP;
     const positions = this.getPipPositions(count, size);
 
@@ -432,11 +398,10 @@ export class HUD {
     });
   }
 
-  getPipPositions(count, spacing) {
-    const positions = [];
+  private getPipPositions(count: number, spacing: number): PipPosition[] {
+    const positions: PipPosition[] = [];
     const offset = spacing / 1.5;
 
-    // Validate pip count
     if (typeof count !== 'number' || !Number.isInteger(count)) {
       console.warn(`Pip count must be an integer. Received: ${count}`);
       return positions;
@@ -486,8 +451,6 @@ export class HUD {
         positions.push({ x: offset, y: offset });
         break;
       default:
-        // For pip counts > 6, fall back to showing the number
-        // This handles expansion to double-nine or higher dominoes
         console.warn(
           `Pip count ${count} not supported. Dominoes typically have 0-6 pips per half.`
         );
@@ -497,7 +460,14 @@ export class HUD {
     return positions;
   }
 
-  roundRect(ctx, x, y, width, height, radius) {
+  private roundRect(
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    radius: number
+  ): void {
     ctx.beginPath();
     ctx.moveTo(x + radius, y);
     ctx.lineTo(x + width - radius, y);
@@ -511,82 +481,76 @@ export class HUD {
     ctx.closePath();
   }
 
-  updateScore() {
+  updateScore(): void {
     const score = this.gameState.getScore();
-    this.drawScorePanel(this.canvases.score.context, score);
-    this.sprites[HUD.SPRITE_INDEX_SCORE].material.map.needsUpdate = true;
-    // Update accessibility element
-    if (this.ariaScore) {
-      this.ariaScore.textContent = `Score: ${score.toLocaleString()}`;
+    if (this.canvases.score) {
+      this.drawScorePanel(this.canvases.score.context, score);
+      const sprite = this.sprites[HUD.SPRITE_INDEX_SCORE];
+      if (sprite?.material.map) {
+        sprite.material.map.needsUpdate = true;
+      }
     }
   }
 
-  updateBonePile() {
+  updateBonePile(): void {
     const bonePileSize = this.gameState.getBonePileSize();
-    this.drawBonePilePanel(this.canvases.bonePile.context, bonePileSize);
-    this.sprites[HUD.SPRITE_INDEX_BONE_PILE].material.map.needsUpdate = true;
-    // Update accessibility element
-    if (this.ariaBonePile) {
-      this.ariaBonePile.textContent = `Bone pile: ${bonePileSize} tiles remaining`;
+    if (this.canvases.bonePile) {
+      this.drawBonePilePanel(this.canvases.bonePile.context, bonePileSize);
+      const sprite = this.sprites[HUD.SPRITE_INDEX_BONE_PILE];
+      if (sprite?.material.map) {
+        sprite.material.map.needsUpdate = true;
+      }
     }
   }
 
-  updateProgression() {
+  updateProgression(): void {
     const pullsRemaining = this.gameState.getPullsRemaining();
     const totalPulls = this.gameState.getTotalPulls();
     const currentPull = Math.min(totalPulls - pullsRemaining + 1, totalPulls);
     const targetScore = this.gameState.getTargetScore();
-    this.drawProgressionPanel(
-      this.canvases.progression.context,
-      currentPull,
-      totalPulls,
-      targetScore
-    );
-    this.sprites[HUD.SPRITE_INDEX_PROGRESSION].material.map.needsUpdate = true;
-    // Update accessibility element
-    if (this.ariaProgression) {
-      this.ariaProgression.textContent = `Pull ${currentPull} of ${totalPulls}. Target score: ${targetScore.toLocaleString()}`;
+    if (this.canvases.progression) {
+      this.drawProgressionPanel(
+        this.canvases.progression.context,
+        currentPull,
+        totalPulls,
+        targetScore
+      );
+      const sprite = this.sprites[HUD.SPRITE_INDEX_PROGRESSION];
+      if (sprite?.material.map) {
+        sprite.material.map.needsUpdate = true;
+      }
     }
   }
 
-  updateRack() {
+  updateRack(): void {
     const playerRack = this.gameState.getPlayerRack();
-    this.drawRackPanel(this.canvases.rack.context, playerRack);
-    this.sprites[HUD.SPRITE_INDEX_RACK].material.map.needsUpdate = true;
-    // Update accessibility element
-    if (this.ariaRack) {
-      const tilesDescription = playerRack
-        .map((tile) => `${tile.left}-${tile.right}`)
-        .join(', ');
-      this.ariaRack.textContent = `Your hand: ${playerRack.length} tiles. ${tilesDescription || 'Empty'}`;
+    if (this.canvases.rack) {
+      this.drawRackPanel(this.canvases.rack.context, playerRack);
+      const sprite = this.sprites[HUD.SPRITE_INDEX_RACK];
+      if (sprite?.material.map) {
+        sprite.material.map.needsUpdate = true;
+      }
     }
   }
 
-  updateAll() {
+  updateAll(): void {
     this.updateScore();
     this.updateBonePile();
     this.updateProgression();
     this.updateRack();
   }
 
-  getHUDScene() {
+  getHUDScene(): THREE.Scene {
     return this.hudScene;
   }
 
-  getHUDCamera() {
+  getHUDCamera(): THREE.OrthographicCamera {
     return this.hudCamera;
   }
 
-  destroy() {
-    // Remove resize handler
+  destroy(): void {
     window.removeEventListener('resize', this.handleResize);
 
-    // Remove accessibility elements
-    if (this.ariaContainer && this.ariaContainer.parentNode) {
-      this.ariaContainer.parentNode.removeChild(this.ariaContainer);
-    }
-
-    // Remove all sprites from HUD scene
     this.sprites.forEach((sprite) => {
       this.hudScene.remove(sprite);
       if (sprite.material.map) {

@@ -1,13 +1,19 @@
-export class GameState {
-  constructor() {
-    this.bonePile = [];
-    this.playerRack = [];
-    this.board = [];
-    this.score = 0;
-    this.totalPulls = 5;
-    this.pullsRemaining = 5;
-    this.targetScore = 100;
+import type { DominoData } from '../types';
 
+/**
+ * Manages the game state including bone pile, player rack, and scoring
+ * Acts as a single source of truth for game data (Singleton-like usage)
+ */
+export class GameState {
+  private bonePile: DominoData[] = [];
+  private playerRack: DominoData[] = [];
+  private board: DominoData[] = [];
+  private score: number = 0;
+  private totalPulls: number = 5;
+  private pullsRemaining: number = 5;
+  private targetScore: number = 100;
+
+  constructor() {
     this.initializeBonePile();
   }
 
@@ -15,15 +21,15 @@ export class GameState {
    * Initialize a complete set of double-six dominoes (0-0 through 6-6)
    * Total of 28 unique tiles
    */
-  initializeBonePile() {
+  private initializeBonePile(): void {
     this.bonePile = [];
 
     // Generate all unique combinations of double-six dominoes
     for (let left = 0; left <= 6; left++) {
       for (let right = left; right <= 6; right++) {
         this.bonePile.push({
-          left: left,
-          right: right,
+          left,
+          right,
           type: 'standard',
         });
       }
@@ -33,28 +39,28 @@ export class GameState {
   /**
    * Shuffle the bone pile using Fisher-Yates algorithm
    */
-  shuffle() {
+  shuffle(): void {
     for (let i = this.bonePile.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [this.bonePile[i], this.bonePile[j]] = [
-        this.bonePile[j],
-        this.bonePile[i],
+        this.bonePile[j]!,
+        this.bonePile[i]!,
       ];
     }
   }
 
   /**
    * Deal tiles from the bone pile to the player's rack
-   * @param {number} count - Number of tiles to deal
-   * @returns {Array} - Array of dealt tiles
    */
-  dealToRack(count) {
-    const dealtTiles = [];
+  dealToRack(count: number): DominoData[] {
+    const dealtTiles: DominoData[] = [];
 
     for (let i = 0; i < count && this.bonePile.length > 0; i++) {
       const tile = this.bonePile.pop();
-      this.playerRack.push(tile);
-      dealtTiles.push(tile);
+      if (tile) {
+        this.playerRack.push(tile);
+        dealtTiles.push(tile);
+      }
     }
 
     return dealtTiles;
@@ -62,10 +68,8 @@ export class GameState {
 
   /**
    * Remove a domino from the player's rack
-   * @param {Object} domino - The domino object to remove
-   * @returns {boolean} - True if domino was found and removed
    */
-  removeDominoFromRack(domino) {
+  removeDominoFromRack(domino: DominoData): boolean {
     const index = this.playerRack.indexOf(domino);
     if (index > -1) {
       this.playerRack.splice(index, 1);
@@ -82,7 +86,7 @@ export class GameState {
    * Reset the game state to initial conditions
    * Note: This does not shuffle the bone pile. Call shuffle() separately if needed.
    */
-  reset() {
+  reset(): void {
     this.playerRack = [];
     this.board = [];
     this.score = 0;
@@ -91,47 +95,46 @@ export class GameState {
   }
 
   // Getters
-  getBonePile() {
+  getBonePile(): DominoData[] {
     return this.bonePile;
   }
 
-  getPlayerRack() {
+  getPlayerRack(): DominoData[] {
     return this.playerRack;
   }
 
-  getBoard() {
+  getBoard(): DominoData[] {
     return this.board;
   }
 
-  getScore() {
+  getScore(): number {
     return this.score;
   }
 
-  getPullsRemaining() {
+  getPullsRemaining(): number {
     return this.pullsRemaining;
   }
 
-  getTargetScore() {
+  getTargetScore(): number {
     return this.targetScore;
   }
 
-  getTotalPulls() {
+  getTotalPulls(): number {
     return this.totalPulls;
   }
 
-  getBonePileSize() {
+  getBonePileSize(): number {
     return this.bonePile.length;
   }
 
-  getPlayerRackSize() {
+  getPlayerRackSize(): number {
     return this.playerRack.length;
   }
 
   /**
    * Add points to the current score
-   * @param {number} points - Points to add (can be negative for deductions)
    */
-  addScore(points) {
+  addScore(points: number): void {
     if (typeof points !== 'number' || !Number.isFinite(points)) {
       throw new Error('Points must be a finite number');
     }
@@ -141,7 +144,7 @@ export class GameState {
   /**
    * Decrement pulls remaining
    */
-  decrementPulls() {
+  decrementPulls(): void {
     if (this.pullsRemaining > 0) {
       this.pullsRemaining--;
     }
@@ -149,10 +152,8 @@ export class GameState {
 
   /**
    * Place a tile from the rack onto the board
-   * @param {number} rackIndex - Index of tile in player's rack (must be a non-negative integer)
-   * @returns {Object|null} The tile that was played, or null if invalid index
    */
-  playTileFromRack(rackIndex) {
+  playTileFromRack(rackIndex: number): DominoData | null {
     if (
       typeof rackIndex !== 'number' ||
       !Number.isFinite(rackIndex) ||
@@ -163,8 +164,10 @@ export class GameState {
     }
     if (rackIndex < this.playerRack.length) {
       const tile = this.playerRack.splice(rackIndex, 1)[0];
-      this.board.push(tile);
-      return tile;
+      if (tile) {
+        this.board.push(tile);
+        return tile;
+      }
     }
     return null;
   }

@@ -1,10 +1,12 @@
 # Dominatro
 
-A Balatro-like point-building game using dominoes, built with Three.js and Vite.
+A Balatro-like point-building game using dominoes, built with Three.js, TypeScript, and Vite.
 
 ## Game Concept
 
 Dominatro is inspired by the roguelike deck-builder Balatro, but uses dominoes instead of playing cards. Players build combinations of dominoes to score points and progress through increasingly challenging levels.
+
+**Note:** This is a prototype to validate the fun factor. If successful, a full-featured rewrite will follow.
 
 ## Features
 
@@ -13,9 +15,11 @@ Dominatro is inspired by the roguelike deck-builder Balatro, but uses dominoes i
 - 🖱️ Top-down camera view with zoom and pan controls
 - 📱 Responsive canvas that adapts to viewport size
 - ✨ Realistic lighting and shadows
+- 📝 Full TypeScript support with strict typing
 
 ## Tech Stack
 
+- **TypeScript** - Type-safe JavaScript
 - **Three.js** - 3D graphics library
 - **Vite** - Fast build tool and dev server
 - **Prettier** - Code formatting
@@ -54,8 +58,9 @@ Dominatro is inspired by the roguelike deck-builder Balatro, but uses dominoes i
 ## Available Scripts
 
 - **`npm run dev`** - Start the Vite development server with hot module replacement
-- **`npm run build`** - Build the project for production (output to `dist/`)
+- **`npm run build`** - Type-check and build the project for production (output to `dist/`)
 - **`npm run preview`** - Preview the production build locally
+- **`npm run typecheck`** - Run TypeScript type checking
 - **`npm run format`** - Format all files with Prettier
 
 ## Project Structure
@@ -63,23 +68,43 @@ Dominatro is inspired by the roguelike deck-builder Balatro, but uses dominoes i
 ```
 dominatro/
 ├── .github/
+│   ├── copilot/
+│   │   └── instructions.md   # AI assistant instructions
 │   └── workflows/
 │       └── deploy.yml        # GitHub Actions deployment workflow
 ├── .husky/
 │   └── pre-commit            # Pre-commit hook for code formatting
+├── docs/
+│   └── DEVELOPMENT.md        # Development guide and architecture
 ├── src/
+│   ├── types/
+│   │   └── index.ts          # TypeScript type definitions
 │   ├── game/
-│   │   ├── Domino.js         # Domino tile class with 3D rendering
-│   │   ├── Board.js          # Game board management
-│   │   └── Scene.js          # Three.js scene setup and rendering
-│   ├── main.js               # Application entry point
+│   │   ├── Board.ts          # Game board management
+│   │   ├── Domino.ts         # Domino tile class with 3D rendering
+│   │   ├── GameState.ts      # Game state management
+│   │   ├── HUD.ts            # Heads-up display
+│   │   └── Scene.ts          # Three.js scene setup and rendering
+│   ├── main.ts               # Application entry point
 │   └── style.css             # Global styles
 ├── index.html                # HTML entry point
+├── tsconfig.json             # TypeScript configuration
 ├── vite.config.js            # Vite configuration
 ├── package.json              # Project dependencies and scripts
 ├── .prettierrc               # Prettier configuration
 └── .prettierignore           # Prettier ignore patterns
 ```
+
+## Architecture
+
+The game uses several design patterns for maintainability:
+
+- **Flyweight** - Shared geometries/materials in `Domino.ts`
+- **Facade** - `Scene.ts` simplifies Three.js complexity
+- **Mediator** - `Board.ts` coordinates components
+- **Observer** - Callback-based event handling
+
+See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for detailed architecture documentation.
 
 ## Development
 

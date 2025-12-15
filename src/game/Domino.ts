@@ -1,5 +1,10 @@
 import * as THREE from 'three';
+import type { PipPosition } from '../types';
 
+/**
+ * Visual representation of a domino tile using Three.js
+ * Uses shared geometries and materials for memory efficiency (Flyweight pattern)
+ */
 export class Domino {
   // Static shared geometries and materials for memory efficiency
   static bodyGeometry = new THREE.BoxGeometry(1, 0.2, 2);
@@ -13,13 +18,17 @@ export class Domino {
   static pipGeometry = new THREE.SphereGeometry(0.08, 16, 16);
   static pipMaterial = new THREE.MeshStandardMaterial({ color: 0x222222 });
 
-  constructor(leftPips, rightPips) {
+  readonly leftPips: number;
+  readonly rightPips: number;
+  private mesh: THREE.Group;
+
+  constructor(leftPips: number, rightPips: number) {
     this.leftPips = leftPips;
     this.rightPips = rightPips;
     this.mesh = this.createDomino();
   }
 
-  createDomino() {
+  private createDomino(): THREE.Group {
     const group = new THREE.Group();
 
     // Domino dimensions
@@ -46,7 +55,13 @@ export class Domino {
     return group;
   }
 
-  addPips(group, count, zPosition, dominoWidth, dominoDepth) {
+  private addPips(
+    group: THREE.Group,
+    count: number,
+    zPosition: number,
+    _dominoWidth: number,
+    dominoDepth: number
+  ): void {
     const pipRadius = 0.08;
     const spacing = 0.25;
 
@@ -66,9 +81,9 @@ export class Domino {
     });
   }
 
-  getPipPositions(count, spacing) {
+  private getPipPositions(count: number, spacing: number): PipPosition[] {
     // Returns positions for pips based on standard domino patterns
-    const positions = [];
+    const positions: PipPosition[] = [];
 
     switch (count) {
       case 0:
@@ -118,31 +133,31 @@ export class Domino {
     return positions;
   }
 
-  setPosition(x, y, z) {
+  setPosition(x: number, y: number, z: number): void {
     this.mesh.position.set(x, y, z);
   }
 
-  setRotation(x, y, z) {
+  setRotation(x: number, y: number, z: number): void {
     this.mesh.rotation.set(x, y, z);
   }
 
-  getMesh() {
+  getMesh(): THREE.Group {
     return this.mesh;
   }
 
-  dispose() {
+  dispose(): void {
     // Since we're using shared geometries and materials, we don't dispose them here
     // The mesh will be garbage collected after being removed from the scene
     // Individual domino instances don't own the shared resources
   }
 
   // Static method to dispose shared resources when completely done with all dominoes
-  static disposeSharedResources() {
-    if (Domino.bodyGeometry) Domino.bodyGeometry.dispose();
-    if (Domino.bodyMaterial) Domino.bodyMaterial.dispose();
-    if (Domino.lineGeometry) Domino.lineGeometry.dispose();
-    if (Domino.lineMaterial) Domino.lineMaterial.dispose();
-    if (Domino.pipGeometry) Domino.pipGeometry.dispose();
-    if (Domino.pipMaterial) Domino.pipMaterial.dispose();
+  static disposeSharedResources(): void {
+    Domino.bodyGeometry?.dispose();
+    Domino.bodyMaterial?.dispose();
+    Domino.lineGeometry?.dispose();
+    Domino.lineMaterial?.dispose();
+    Domino.pipGeometry?.dispose();
+    Domino.pipMaterial?.dispose();
   }
 }
