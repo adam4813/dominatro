@@ -389,6 +389,14 @@ export class HUD {
     const positions = [];
     const offset = spacing / 1.5;
 
+    // Validate pip count
+    if (count < 0) {
+      console.warn(
+        `Negative pip count ${count} is invalid. Dominoes have 0-6 pips per half.`
+      );
+      return positions;
+    }
+
     switch (count) {
       case 0:
         break;

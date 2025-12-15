@@ -129,11 +129,11 @@ export class GameState {
 
   /**
    * Add points to the current score
-   * @param {number} points - Points to add
+   * @param {number} points - Points to add (can be negative for deductions)
    */
   addScore(points) {
-    if (typeof points !== 'number' || !Number.isFinite(points) || points < 0) {
-      throw new Error('Points must be a non-negative number');
+    if (typeof points !== 'number' || !Number.isFinite(points)) {
+      throw new Error('Points must be a finite number');
     }
     this.score += points;
   }
@@ -149,11 +149,15 @@ export class GameState {
 
   /**
    * Place a tile from the rack onto the board
-   * @param {number} rackIndex - Index of tile in player's rack
+   * @param {number} rackIndex - Index of tile in player's rack (must be an integer)
    * @returns {Object|null} The tile that was played, or null if invalid index
    */
   playTileFromRack(rackIndex) {
-    if (typeof rackIndex !== 'number' || !Number.isFinite(rackIndex)) {
+    if (
+      typeof rackIndex !== 'number' ||
+      !Number.isFinite(rackIndex) ||
+      !Number.isInteger(rackIndex)
+    ) {
       return null;
     }
     if (rackIndex >= 0 && rackIndex < this.playerRack.length) {

@@ -515,6 +515,8 @@ export class Board {
     if (this.hud) {
       this.hud.destroy();
       this.hud = null;
+      // Clear HUD references from the scene to prevent memory leaks
+      this.scene.setHUD(null, null);
     }
   }
 }

@@ -660,7 +660,11 @@ export class Scene {
     // Render the HUD on top (screen-space overlay)
     if (this.hudScene && this.hudCamera) {
       this.renderer.autoClear = false;
-      this.renderer.render(this.hudScene, this.hudCamera);
+      try {
+        this.renderer.render(this.hudScene, this.hudCamera);
+      } finally {
+        this.renderer.autoClear = true;
+      }
     }
   }
 
