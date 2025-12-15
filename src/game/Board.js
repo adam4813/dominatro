@@ -448,7 +448,7 @@ export class Board {
 
   /**
    * Deal tiles from bone pile to player rack and refresh HUD
-   * @param {number} count - Number of tiles to deal (must be a positive integer)
+   * @param {number} count - Number of tiles to deal (must be a non-negative integer)
    * @returns {Array} Array of dealt tiles
    */
   dealTilesToRack(count) {

@@ -306,7 +306,8 @@ class Game {
 
   /**
    * Test helper: Deal tiles from the bone pile to the player's rack
-   * @param {number} count - Number of tiles to deal (must be a positive integer)
+   * Note: This updates the HUD but does not update the 3D visual rack in the scene
+   * @param {number} count - Number of tiles to deal (must be a non-negative integer)
    */
   testDealTiles(count) {
     if (
@@ -340,6 +341,7 @@ class Game {
 
   /**
    * Test helper: Play a tile from the player's rack
+   * Note: This updates the HUD but does not update the 3D visual rack in the scene
    * @param {number} index - Index of the tile in the rack (must be a non-negative integer)
    */
   testPlayTile(index) {
@@ -380,7 +382,9 @@ let gameInstance = null;
 window.addEventListener('DOMContentLoaded', () => {
   gameInstance = new Game();
   // Expose for development/testing only
-  window.__GAME_DEBUG__ = { gameInstance };
+  if (import.meta.env && import.meta.env.DEV) {
+    window.__GAME_DEBUG__ = { gameInstance };
+  }
 });
 
 export { gameInstance };

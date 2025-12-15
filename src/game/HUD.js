@@ -64,8 +64,55 @@ export class HUD {
     this.hudScene = new THREE.Scene();
     this.hudCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
 
+    // Create accessibility elements for screen readers
+    this.createAccessibilityElements();
+
     this.createHUD();
     window.addEventListener('resize', this.handleResize);
+  }
+
+  /**
+   * Create hidden ARIA live regions for screen reader accessibility
+   */
+  createAccessibilityElements() {
+    // Create container for accessibility elements
+    this.ariaContainer = document.createElement('div');
+    this.ariaContainer.id = 'hud-aria-container';
+    this.ariaContainer.style.position = 'absolute';
+    this.ariaContainer.style.left = '-10000px';
+    this.ariaContainer.style.width = '1px';
+    this.ariaContainer.style.height = '1px';
+    this.ariaContainer.style.overflow = 'hidden';
+
+    // Score
+    this.ariaScore = document.createElement('div');
+    this.ariaScore.setAttribute('role', 'status');
+    this.ariaScore.setAttribute('aria-live', 'polite');
+    this.ariaScore.setAttribute('aria-label', 'Score');
+    this.ariaContainer.appendChild(this.ariaScore);
+
+    // Progression
+    this.ariaProgression = document.createElement('div');
+    this.ariaProgression.setAttribute('role', 'status');
+    this.ariaProgression.setAttribute('aria-live', 'polite');
+    this.ariaProgression.setAttribute('aria-label', 'Match progression');
+    this.ariaContainer.appendChild(this.ariaProgression);
+
+    // Bone pile
+    this.ariaBonePile = document.createElement('div');
+    this.ariaBonePile.setAttribute('role', 'status');
+    this.ariaBonePile.setAttribute('aria-live', 'polite');
+    this.ariaBonePile.setAttribute('aria-label', 'Bone pile');
+    this.ariaContainer.appendChild(this.ariaBonePile);
+
+    // Rack
+    this.ariaRack = document.createElement('div');
+    this.ariaRack.setAttribute('role', 'status');
+    this.ariaRack.setAttribute('aria-live', 'polite');
+    this.ariaRack.setAttribute('aria-label', 'Your hand');
+    this.ariaContainer.appendChild(this.ariaRack);
+
+    document.body.appendChild(this.ariaContainer);
   }
 
   createCanvasTexture(width, height) {
@@ -390,6 +437,11 @@ export class HUD {
     const offset = spacing / 1.5;
 
     // Validate pip count
+    if (typeof count !== 'number' || !Number.isInteger(count)) {
+      console.warn(`Pip count must be an integer. Received: ${count}`);
+      return positions;
+    }
+
     if (count < 0) {
       console.warn(
         `Negative pip count ${count} is invalid. Dominoes have 0-6 pips per half.`
@@ -463,12 +515,20 @@ export class HUD {
     const score = this.gameState.getScore();
     this.drawScorePanel(this.canvases.score.context, score);
     this.sprites[HUD.SPRITE_INDEX_SCORE].material.map.needsUpdate = true;
+    // Update accessibility element
+    if (this.ariaScore) {
+      this.ariaScore.textContent = `Score: ${score.toLocaleString()}`;
+    }
   }
 
   updateBonePile() {
     const bonePileSize = this.gameState.getBonePileSize();
     this.drawBonePilePanel(this.canvases.bonePile.context, bonePileSize);
     this.sprites[HUD.SPRITE_INDEX_BONE_PILE].material.map.needsUpdate = true;
+    // Update accessibility element
+    if (this.ariaBonePile) {
+      this.ariaBonePile.textContent = `Bone pile: ${bonePileSize} tiles remaining`;
+    }
   }
 
   updateProgression() {
@@ -483,12 +543,23 @@ export class HUD {
       targetScore
     );
     this.sprites[HUD.SPRITE_INDEX_PROGRESSION].material.map.needsUpdate = true;
+    // Update accessibility element
+    if (this.ariaProgression) {
+      this.ariaProgression.textContent = `Pull ${currentPull} of ${totalPulls}. Target score: ${targetScore.toLocaleString()}`;
+    }
   }
 
   updateRack() {
     const playerRack = this.gameState.getPlayerRack();
     this.drawRackPanel(this.canvases.rack.context, playerRack);
     this.sprites[HUD.SPRITE_INDEX_RACK].material.map.needsUpdate = true;
+    // Update accessibility element
+    if (this.ariaRack) {
+      const tilesDescription = playerRack
+        .map((tile) => `${tile.left}-${tile.right}`)
+        .join(', ');
+      this.ariaRack.textContent = `Your hand: ${playerRack.length} tiles. ${tilesDescription || 'Empty'}`;
+    }
   }
 
   updateAll() {
@@ -509,6 +580,11 @@ export class HUD {
   destroy() {
     // Remove resize handler
     window.removeEventListener('resize', this.handleResize);
+
+    // Remove accessibility elements
+    if (this.ariaContainer && this.ariaContainer.parentNode) {
+      this.ariaContainer.parentNode.removeChild(this.ariaContainer);
+    }
 
     // Remove all sprites from HUD scene
     this.sprites.forEach((sprite) => {
