@@ -16,6 +16,19 @@ export type DominoType =
   | 'thief'
   | 'blank-slate';
 
+/** Tile types that act as wildcards for matching */
+export const WILDCARD_TYPES: readonly DominoType[] = [
+  'wild',
+  'crusher',
+  'cheater',
+  'spinner',
+] as const;
+
+/** Check if a domino type is a wildcard */
+export function isWildcardType(type: DominoType): boolean {
+  return WILDCARD_TYPES.includes(type);
+}
+
 /** Represents a domino tile with left and right pip values */
 export interface DominoData {
   left: number;

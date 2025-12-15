@@ -4,6 +4,7 @@ import { HUD } from './HUD';
 import type { Scene } from './Scene';
 import type { GameState } from './GameState';
 import type { DominoData, OpenEnds, PlacementSide } from '../types';
+import { isWildcardType } from '../types';
 
 /**
  * Manages the game board, domino chain, and board-related game logic
@@ -58,11 +59,13 @@ export class Board {
     }
 
     const openEnd = side === 'left' ? this.openEnds.left : this.openEnds.right;
-    const isWild = dominoData.type === 'wild';
 
-    // Wild tiles match any value
+    // Special tiles that act as wildcards for matching
+    const isWildcard = isWildcardType(dominoData.type);
+
+    // Wildcard tiles match any value, otherwise check for standard pip matching
     const matches =
-      isWild || dominoData.left === openEnd || dominoData.right === openEnd;
+      isWildcard || dominoData.left === openEnd || dominoData.right === openEnd;
 
     console.log(
       `Board: Checking placement on ${side} side. Open end: ${openEnd}, Domino: [${dominoData.left}|${dominoData.right}] (${dominoData.type}), Valid: ${matches}`

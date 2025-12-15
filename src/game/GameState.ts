@@ -35,11 +35,26 @@ export class GameState {
       }
     }
 
-    // Add special tiles
+    // Add special tiles with unique behaviors:
+    //
+    // WILDCARD TILES (match any pip value):
+    // - Wild: Pure wildcard (2 tiles)
+    // - Crusher: Wildcard + future crushing ability (1 tile)
+    // - Cheater: Wildcard + future rule-bending ability (1 tile)
+    // - Spinner: Wildcard + future rotation ability (1 tile)
+    //
+    // SCORING MODIFIER TILES:
+    // - Doubler: Doubles the score of the play (2 tiles)
+    // - Odd Favor: Bonus points for odd pip sums (1 tile)
+    //
+    // UTILITY TILES:
+    // - Thief: Steals points or tiles (1 tile)
+    // - Blank Slate: Resets certain game conditions (1 tile)
+
     // Wild tiles - match any pip value (2 tiles)
     this.bonePile.push(
       { left: 0, right: 0, type: 'wild' },
-      { left: 0, right: 0, type: 'wild' }
+      { left: 1, right: 1, type: 'wild' }
     );
 
     // Doubler - doubles the score of the play (2 tiles)
@@ -51,20 +66,20 @@ export class GameState {
     // Odd Favor - bonus points for odd pip sums (1 tile)
     this.bonePile.push({ left: 1, right: 3, type: 'odd-favor' });
 
-    // Spinner - allows rotation of board layout (1 tile)
+    // Spinner - wildcard with rotation ability (1 tile)
     this.bonePile.push({ left: 5, right: 5, type: 'spinner' });
 
-    // Crusher - removes opponent advantages (1 tile)
+    // Crusher - wildcard with crushing ability (1 tile)
     this.bonePile.push({ left: 6, right: 6, type: 'crusher' });
 
-    // Cheater - allows rule bending (1 tile)
+    // Cheater - wildcard with rule-bending ability (1 tile)
     this.bonePile.push({ left: 2, right: 4, type: 'cheater' });
 
     // Thief - steals points or tiles (1 tile)
     this.bonePile.push({ left: 1, right: 6, type: 'thief' });
 
     // Blank Slate - resets certain game conditions (1 tile)
-    this.bonePile.push({ left: 0, right: 0, type: 'blank-slate' });
+    this.bonePile.push({ left: 0, right: 1, type: 'blank-slate' });
   }
 
   /**
@@ -201,21 +216,5 @@ export class GameState {
       }
     }
     return null;
-  }
-
-  /**
-   * Check if a domino pip matches an open end, accounting for wild tiles
-   */
-  isWildcardMatch(
-    dominoPip: number,
-    openEnd: number,
-    isWild: boolean
-  ): boolean {
-    // Wild tiles match any value
-    if (isWild) {
-      return true;
-    }
-    // Standard match
-    return dominoPip === openEnd;
   }
 }
