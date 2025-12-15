@@ -16,6 +16,9 @@ export type DominoType =
   | 'thief'
   | 'blank-slate';
 
+/** Special tile pip value constant - indicates tile should show symbol instead of pips */
+export const SPECIAL_TILE_PIP_VALUE = -1;
+
 /** Tile types that act as wildcards for matching */
 export const WILDCARD_TYPES: readonly DominoType[] = [
   'wild',

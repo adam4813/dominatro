@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import type { PipPosition, DominoType } from '../types';
+import { SPECIAL_TILE_PIP_VALUE } from '../types';
 
 /**
  * Visual representation of a domino tile using Three.js
@@ -155,9 +156,15 @@ export class Domino {
     group: THREE.Group,
     count: number,
     zPosition: number,
-    _dominoWidth: number,
+    dominoWidth: number,
     dominoDepth: number
   ): void {
+    // Special tiles (with pip value -1) show X symbol instead of pips
+    if (count === SPECIAL_TILE_PIP_VALUE) {
+      this.addXSymbol(group, zPosition, dominoWidth, dominoDepth);
+      return;
+    }
+
     const pipRadius = 0.08;
     const spacing = 0.25;
 
@@ -175,6 +182,39 @@ export class Domino {
       pip.castShadow = true;
       group.add(pip);
     });
+  }
+
+  /**
+   * Add an X symbol for special tiles instead of pips
+   */
+  private addXSymbol(
+    group: THREE.Group,
+    zPosition: number,
+    dominoWidth: number,
+    dominoDepth: number
+  ): void {
+    const lineThickness = 0.06;
+    const lineLength = 0.4;
+    const lineGeometry = new THREE.BoxGeometry(lineThickness, 0.05, lineLength);
+    const lineMaterial = new THREE.MeshStandardMaterial({
+      color: 0x222222,
+      metalness: 0.3,
+      roughness: 0.5,
+    });
+
+    // First diagonal line (\)
+    const line1 = new THREE.Mesh(lineGeometry, lineMaterial);
+    line1.position.set(0, dominoDepth / 2 + 0.025, zPosition);
+    line1.rotation.set(0, Math.PI / 4, 0);
+    line1.castShadow = true;
+    group.add(line1);
+
+    // Second diagonal line (/)
+    const line2 = new THREE.Mesh(lineGeometry, lineMaterial);
+    line2.position.set(0, dominoDepth / 2 + 0.025, zPosition);
+    line2.rotation.set(0, -Math.PI / 4, 0);
+    line2.castShadow = true;
+    group.add(line2);
   }
 
   private getPipPositions(count: number, spacing: number): PipPosition[] {
