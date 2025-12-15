@@ -4,6 +4,7 @@ export class GameState {
     this.playerRack = [];
     this.board = [];
     this.score = 0;
+    this.totalPulls = 5;
     this.pullsRemaining = 5;
     this.targetScore = 100;
 
@@ -114,11 +115,57 @@ export class GameState {
     return this.targetScore;
   }
 
+  getTotalPulls() {
+    return this.totalPulls;
+  }
+
   getBonePileSize() {
     return this.bonePile.length;
   }
 
   getPlayerRackSize() {
     return this.playerRack.length;
+  }
+
+  /**
+   * Add points to the current score
+   * @param {number} points - Points to add (can be negative for deductions)
+   */
+  addScore(points) {
+    if (typeof points !== 'number' || !Number.isFinite(points)) {
+      throw new Error('Points must be a finite number');
+    }
+    this.score += points;
+  }
+
+  /**
+   * Decrement pulls remaining
+   */
+  decrementPulls() {
+    if (this.pullsRemaining > 0) {
+      this.pullsRemaining--;
+    }
+  }
+
+  /**
+   * Place a tile from the rack onto the board
+   * @param {number} rackIndex - Index of tile in player's rack (must be a non-negative integer)
+   * @returns {Object|null} The tile that was played, or null if invalid index
+   */
+  playTileFromRack(rackIndex) {
+    if (
+      typeof rackIndex !== 'number' ||
+      !Number.isFinite(rackIndex) ||
+      !Number.isInteger(rackIndex) ||
+      rackIndex < 0
+    ) {
+      return null;
+    }
+    if (rackIndex < this.playerRack.length) {
+      const tile = this.playerRack.splice(rackIndex, 1)[0];
+      this.board.push(tile);
+      return tile;
+    }
+    return null;
   }
 }

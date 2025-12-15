@@ -1,5 +1,6 @@
 import { Domino } from './Domino.js';
 import * as THREE from 'three';
+import { HUD } from './HUD.js';
 
 export class Board {
   // Constants for domino dimensions and spacing
@@ -20,6 +21,11 @@ export class Board {
     this.dominoSpacing = 2.2; // Space between dominoes in the chain
     this.boardYPosition = 0.1; // Height of dominoes on board
     this.boardZPosition = -3; // Position board chain towards back
+
+    this.hud = new HUD(this.gameState);
+
+    // Register HUD with scene for rendering
+    this.scene.setHUD(this.hud.getHUDScene(), this.hud.getHUDCamera());
 
     console.log('Board: Initialized empty board');
   }
@@ -425,6 +431,66 @@ export class Board {
     return this.chainDominoes;
   }
 
+  getHUD() {
+    return this.hud;
+  }
+
+  /**
+   * Update score and refresh HUD
+   * @param {number} points - Points to add
+   */
+  addScore(points) {
+    this.gameState.addScore(points);
+    if (this.hud) {
+      this.hud.updateScore();
+    }
+  }
+
+  /**
+   * Deal tiles from bone pile to player rack and refresh HUD
+   * @param {number} count - Number of tiles to deal (must be a non-negative integer)
+   * @returns {Array} Array of dealt tiles
+   */
+  dealTilesToRack(count) {
+    if (
+      typeof count !== 'number' ||
+      !Number.isFinite(count) ||
+      count < 0 ||
+      !Number.isInteger(count)
+    ) {
+      throw new Error('Count must be a non-negative integer');
+    }
+    const dealtTiles = this.gameState.dealToRack(count);
+    if (this.hud) {
+      this.hud.updateBonePile();
+      this.hud.updateRack();
+    }
+    return dealtTiles;
+  }
+
+  /**
+   * Play a tile from rack to board and refresh HUD
+   * @param {number} rackIndex - Index of tile in rack
+   */
+  playTile(rackIndex) {
+    const tile = this.gameState.playTileFromRack(rackIndex);
+    if (tile && this.hud) {
+      this.hud.updateRack();
+    }
+    return tile;
+  }
+
+  /**
+   * Decrement pulls and refresh HUD
+   * Represents completion of a pull in the match progression
+   */
+  completePull() {
+    this.gameState.decrementPulls();
+    if (this.hud) {
+      this.hud.updateProgression();
+    }
+  }
+
   clear() {
     this.chainDominoes.forEach((domino) => {
       this.scene.remove(domino.getMesh());
@@ -441,6 +507,16 @@ export class Board {
       this.rootOutline.geometry.dispose();
       this.rootOutline.material.dispose();
       this.rootOutline = null;
+    }
+  }
+
+  destroy() {
+    this.clear();
+    if (this.hud) {
+      this.hud.destroy();
+      this.hud = null;
+      // Clear HUD references from the scene to prevent memory leaks
+      this.scene.setHUD(null, null);
     }
   }
 }
