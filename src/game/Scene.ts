@@ -13,6 +13,7 @@ import type {
   GetPlacementOrientationCallback,
   PlacementZoneClickCallback,
 } from '../types';
+import { SPECIAL_TILE_PIP_VALUE } from '../types';
 
 const BOARD_PADDING = 1;
 
@@ -556,7 +557,10 @@ export class Scene {
       dominoToShow.right,
       dominoToShow.type
     );
-    const isDouble = dominoToShow.left === dominoToShow.right;
+    // Special tiles with SPECIAL_TILE_PIP_VALUE should not be treated as doubles
+    const isDouble =
+      dominoToShow.left === dominoToShow.right &&
+      dominoToShow.left !== SPECIAL_TILE_PIP_VALUE;
     const mesh = ghostDomino.getMesh();
 
     mesh.position.copy(zone.mesh.position);

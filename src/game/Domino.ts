@@ -19,6 +19,82 @@ export class Domino {
   static pipGeometry = new THREE.SphereGeometry(0.08, 16, 16);
   static pipMaterial = new THREE.MeshStandardMaterial({ color: 0x222222 });
 
+  // Shared materials for special tile types
+  static wildMaterial = new THREE.MeshStandardMaterial({
+    color: 0xcc99ff,
+    emissive: 0x9966ff,
+    emissiveIntensity: 0.3,
+    roughness: 0.5,
+    metalness: 0.1,
+  });
+  static doublerMaterial = new THREE.MeshStandardMaterial({
+    color: 0xffd700,
+    emissive: 0xffaa00,
+    emissiveIntensity: 0.3,
+    roughness: 0.5,
+    metalness: 0.1,
+  });
+  static oddFavorMaterial = new THREE.MeshStandardMaterial({
+    color: 0xff6b6b,
+    emissive: 0xff4444,
+    emissiveIntensity: 0.2,
+    roughness: 0.5,
+    metalness: 0.1,
+  });
+  static spinnerMaterial = new THREE.MeshStandardMaterial({
+    color: 0x4ecdc4,
+    emissive: 0x2fa89f,
+    emissiveIntensity: 0.2,
+    roughness: 0.5,
+    metalness: 0.1,
+  });
+  static crusherMaterial = new THREE.MeshStandardMaterial({
+    color: 0x6c5ce7,
+    emissive: 0x5545b8,
+    emissiveIntensity: 0.2,
+    roughness: 0.5,
+    metalness: 0.1,
+  });
+  static cheaterMaterial = new THREE.MeshStandardMaterial({
+    color: 0xfd79a8,
+    emissive: 0xfc5c9c,
+    emissiveIntensity: 0.2,
+    roughness: 0.5,
+    metalness: 0.1,
+  });
+  static thiefMaterial = new THREE.MeshStandardMaterial({
+    color: 0x2d3436,
+    emissive: 0x636e72,
+    emissiveIntensity: 0.3,
+    roughness: 0.5,
+    metalness: 0.1,
+  });
+  static blankSlateMaterial = new THREE.MeshStandardMaterial({
+    color: 0xdfe6e9,
+    emissive: 0xb2bec3,
+    emissiveIntensity: 0.2,
+    roughness: 0.5,
+    metalness: 0.1,
+  });
+
+  // Shared geometries and materials for type marker
+  static markerGeometry = new THREE.CylinderGeometry(0.12, 0.12, 0.05, 8);
+  static markerMaterial = new THREE.MeshStandardMaterial({
+    color: 0xffffff,
+    emissive: 0xffffff,
+    emissiveIntensity: 0.5,
+    metalness: 0.8,
+    roughness: 0.2,
+  });
+
+  // Shared geometries and materials for X symbol
+  static xLineGeometry = new THREE.BoxGeometry(0.06, 0.05, 0.4);
+  static xLineMaterial = new THREE.MeshStandardMaterial({
+    color: 0x222222,
+    metalness: 0.3,
+    roughness: 0.5,
+  });
+
   readonly leftPips: number;
   readonly rightPips: number;
   readonly type: DominoType;
@@ -74,57 +150,28 @@ export class Domino {
    * Get body material based on tile type with unique colors
    */
   private getBodyMaterial(): THREE.Material {
-    if (this.type === 'standard') {
-      return Domino.bodyMaterial;
-    }
-
-    // Clone and customize material for special types
-    const material = Domino.bodyMaterial.clone();
-
     switch (this.type) {
+      case 'standard':
+        return Domino.bodyMaterial;
       case 'wild':
-        material.color.setHex(0xcc99ff); // Purple
-        material.emissive.setHex(0x9966ff);
-        material.emissiveIntensity = 0.3;
-        break;
+        return Domino.wildMaterial;
       case 'doubler':
-        material.color.setHex(0xffd700); // Gold
-        material.emissive.setHex(0xffaa00);
-        material.emissiveIntensity = 0.3;
-        break;
+        return Domino.doublerMaterial;
       case 'odd-favor':
-        material.color.setHex(0xff6b6b); // Red
-        material.emissive.setHex(0xff4444);
-        material.emissiveIntensity = 0.2;
-        break;
+        return Domino.oddFavorMaterial;
       case 'spinner':
-        material.color.setHex(0x4ecdc4); // Teal
-        material.emissive.setHex(0x2fa89f);
-        material.emissiveIntensity = 0.2;
-        break;
+        return Domino.spinnerMaterial;
       case 'crusher':
-        material.color.setHex(0x6c5ce7); // Blue-Purple
-        material.emissive.setHex(0x5545b8);
-        material.emissiveIntensity = 0.2;
-        break;
+        return Domino.crusherMaterial;
       case 'cheater':
-        material.color.setHex(0xfd79a8); // Pink
-        material.emissive.setHex(0xfc5c9c);
-        material.emissiveIntensity = 0.2;
-        break;
+        return Domino.cheaterMaterial;
       case 'thief':
-        material.color.setHex(0x2d3436); // Dark Gray
-        material.emissive.setHex(0x636e72);
-        material.emissiveIntensity = 0.3;
-        break;
+        return Domino.thiefMaterial;
       case 'blank-slate':
-        material.color.setHex(0xdfe6e9); // Light Gray
-        material.emissive.setHex(0xb2bec3);
-        material.emissiveIntensity = 0.2;
-        break;
+        return Domino.blankSlateMaterial;
+      default:
+        return Domino.bodyMaterial;
     }
-
-    return material;
   }
 
   /**
@@ -132,20 +179,11 @@ export class Domino {
    */
   private addTypeMarker(
     group: THREE.Group,
-    width: number,
+    _width: number,
     depth: number
   ): void {
-    // Create a small icon/emblem on the tile
-    const markerGeometry = new THREE.CylinderGeometry(0.12, 0.12, 0.05, 8);
-    const markerMaterial = new THREE.MeshStandardMaterial({
-      color: 0xffffff,
-      emissive: 0xffffff,
-      emissiveIntensity: 0.5,
-      metalness: 0.8,
-      roughness: 0.2,
-    });
-
-    const marker = new THREE.Mesh(markerGeometry, markerMaterial);
+    // Use shared geometry and material
+    const marker = new THREE.Mesh(Domino.markerGeometry, Domino.markerMaterial);
     marker.position.set(0, depth / 2 + 0.025, 0);
     marker.rotation.x = Math.PI / 2;
     marker.castShadow = true;
@@ -190,27 +228,19 @@ export class Domino {
   private addXSymbol(
     group: THREE.Group,
     zPosition: number,
-    dominoWidth: number,
+    _dominoWidth: number,
     dominoDepth: number
   ): void {
-    const lineThickness = 0.06;
-    const lineLength = 0.4;
-    const lineGeometry = new THREE.BoxGeometry(lineThickness, 0.05, lineLength);
-    const lineMaterial = new THREE.MeshStandardMaterial({
-      color: 0x222222,
-      metalness: 0.3,
-      roughness: 0.5,
-    });
-
+    // Use shared geometry and material
     // First diagonal line (\)
-    const line1 = new THREE.Mesh(lineGeometry, lineMaterial);
+    const line1 = new THREE.Mesh(Domino.xLineGeometry, Domino.xLineMaterial);
     line1.position.set(0, dominoDepth / 2 + 0.025, zPosition);
     line1.rotation.set(0, Math.PI / 4, 0);
     line1.castShadow = true;
     group.add(line1);
 
     // Second diagonal line (/)
-    const line2 = new THREE.Mesh(lineGeometry, lineMaterial);
+    const line2 = new THREE.Mesh(Domino.xLineGeometry, Domino.xLineMaterial);
     line2.position.set(0, dominoDepth / 2 + 0.025, zPosition);
     line2.rotation.set(0, -Math.PI / 4, 0);
     line2.castShadow = true;
@@ -295,5 +325,17 @@ export class Domino {
     Domino.lineMaterial?.dispose();
     Domino.pipGeometry?.dispose();
     Domino.pipMaterial?.dispose();
+    Domino.wildMaterial?.dispose();
+    Domino.doublerMaterial?.dispose();
+    Domino.oddFavorMaterial?.dispose();
+    Domino.spinnerMaterial?.dispose();
+    Domino.crusherMaterial?.dispose();
+    Domino.cheaterMaterial?.dispose();
+    Domino.thiefMaterial?.dispose();
+    Domino.blankSlateMaterial?.dispose();
+    Domino.markerGeometry?.dispose();
+    Domino.markerMaterial?.dispose();
+    Domino.xLineGeometry?.dispose();
+    Domino.xLineMaterial?.dispose();
   }
 }

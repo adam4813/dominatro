@@ -4,7 +4,7 @@ import { HUD } from './HUD';
 import type { Scene } from './Scene';
 import type { GameState } from './GameState';
 import type { DominoData, OpenEnds, PlacementSide } from '../types';
-import { isWildcardType } from '../types';
+import { isWildcardType, SPECIAL_TILE_PIP_VALUE } from '../types';
 
 /**
  * Manages the game board, domino chain, and board-related game logic
@@ -159,8 +159,13 @@ export class Board {
     for (let i = this.rootIndex + 1; i < this.chain.length; i++) {
       const prevDomino = this.chain[i - 1]!;
       const currDomino = this.chain[i]!;
-      const prevIsDouble = prevDomino.left === prevDomino.right;
-      const currIsDouble = currDomino.left === currDomino.right;
+      // Special tiles with SPECIAL_TILE_PIP_VALUE should not be treated as doubles
+      const prevIsDouble =
+        prevDomino.left === prevDomino.right &&
+        prevDomino.left !== SPECIAL_TILE_PIP_VALUE;
+      const currIsDouble =
+        currDomino.left === currDomino.right &&
+        currDomino.left !== SPECIAL_TILE_PIP_VALUE;
       const prevHalfWidth = prevIsDouble
         ? Board.DOUBLE_HALF_WIDTH
         : Board.REGULAR_HALF_WIDTH;
@@ -175,8 +180,13 @@ export class Board {
     for (let i = this.rootIndex - 1; i >= 0; i--) {
       const prevDomino = this.chain[i + 1]!;
       const currDomino = this.chain[i]!;
-      const prevIsDouble = prevDomino.left === prevDomino.right;
-      const currIsDouble = currDomino.left === currDomino.right;
+      // Special tiles with SPECIAL_TILE_PIP_VALUE should not be treated as doubles
+      const prevIsDouble =
+        prevDomino.left === prevDomino.right &&
+        prevDomino.left !== SPECIAL_TILE_PIP_VALUE;
+      const currIsDouble =
+        currDomino.left === currDomino.right &&
+        currDomino.left !== SPECIAL_TILE_PIP_VALUE;
       const prevHalfWidth = prevIsDouble
         ? Board.DOUBLE_HALF_WIDTH
         : Board.REGULAR_HALF_WIDTH;
@@ -225,8 +235,13 @@ export class Board {
     const rightmostPos = positions[this.chain.length - 1]!;
     const leftmostDomino = this.chain[0]!;
     const rightmostDomino = this.chain[this.chain.length - 1]!;
-    const leftIsDouble = leftmostDomino.left === leftmostDomino.right;
-    const rightIsDouble = rightmostDomino.left === rightmostDomino.right;
+    // Special tiles with SPECIAL_TILE_PIP_VALUE should not be treated as doubles
+    const leftIsDouble =
+      leftmostDomino.left === leftmostDomino.right &&
+      leftmostDomino.left !== SPECIAL_TILE_PIP_VALUE;
+    const rightIsDouble =
+      rightmostDomino.left === rightmostDomino.right &&
+      rightmostDomino.left !== SPECIAL_TILE_PIP_VALUE;
 
     const leftHalfWidth = leftIsDouble
       ? Board.DOUBLE_HALF_WIDTH
@@ -260,7 +275,10 @@ export class Board {
         dominoData.type
       );
       const x = positions[index]!;
-      const isDouble = dominoData.left === dominoData.right;
+      // Special tiles with SPECIAL_TILE_PIP_VALUE should not be treated as doubles
+      const isDouble =
+        dominoData.left === dominoData.right &&
+        dominoData.left !== SPECIAL_TILE_PIP_VALUE;
 
       domino.setPosition(x, this.boardYPosition, this.boardZPosition);
       if (!isDouble) {
@@ -287,8 +305,13 @@ export class Board {
     const rightmostPos = positions[this.chain.length - 1]!;
     const leftmostDomino = this.chain[0]!;
     const rightmostDomino = this.chain[this.chain.length - 1]!;
-    const leftIsDouble = leftmostDomino.left === leftmostDomino.right;
-    const rightIsDouble = rightmostDomino.left === rightmostDomino.right;
+    // Special tiles with SPECIAL_TILE_PIP_VALUE should not be treated as doubles
+    const leftIsDouble =
+      leftmostDomino.left === leftmostDomino.right &&
+      leftmostDomino.left !== SPECIAL_TILE_PIP_VALUE;
+    const rightIsDouble =
+      rightmostDomino.left === rightmostDomino.right &&
+      rightmostDomino.left !== SPECIAL_TILE_PIP_VALUE;
     const leftHalfWidth = leftIsDouble
       ? Board.DOUBLE_HALF_WIDTH
       : Board.REGULAR_HALF_WIDTH;
@@ -314,7 +337,10 @@ export class Board {
     if (this.chain.length === 0 || this.rootIndex < 0) return;
 
     const rootDominoData = this.chain[this.rootIndex]!;
-    const isDouble = rootDominoData.left === rootDominoData.right;
+    // Special tiles with SPECIAL_TILE_PIP_VALUE should not be treated as doubles
+    const isDouble =
+      rootDominoData.left === rootDominoData.right &&
+      rootDominoData.left !== SPECIAL_TILE_PIP_VALUE;
 
     const outlineGeometry = isDouble
       ? new THREE.BoxGeometry(1.3, 0.05, 2.3)

@@ -4,6 +4,7 @@ import { Board } from './game/Board';
 import { GameState } from './game/GameState';
 import { Domino } from './game/Domino';
 import type { DominoData, RackDomino, PlacementSide } from './types';
+import { SPECIAL_TILE_PIP_VALUE } from './types';
 
 // Constants for rack layout
 const RACK_SPACING = 1.5;
@@ -142,7 +143,10 @@ class Game {
     }
 
     const boardZ = this.board.boardZPosition;
-    const isDouble = dominoData.left === dominoData.right;
+    // Special tiles with SPECIAL_TILE_PIP_VALUE should not be treated as doubles
+    const isDouble =
+      dominoData.left === dominoData.right &&
+      dominoData.left !== SPECIAL_TILE_PIP_VALUE;
 
     if (this.board.chain.length === 0) {
       this.scene.createPlacementZone(
