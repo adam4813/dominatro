@@ -43,6 +43,7 @@ export class Scene {
 
   // Public for Game class access
   rackDominoes: RackDomino[] = [];
+  boardDominoes: THREE.Group[] = [];
   private placementZones: PlacementZone[] = [];
 
   // Ground boundaries
@@ -264,23 +265,35 @@ export class Scene {
       }
     }
 
-    // Check for rack domino hover
-    const rackMeshes = this.rackDominoes.map((d) => d.mesh);
-    const intersects = this.raycaster.intersectObjects(rackMeshes, true);
+    // Check for rack and board domino hover (when no domino is selected)
+    if (!this.selectedDomino) {
+      const allDominoMeshes = [
+        ...this.rackDominoes.map((d) => d.mesh),
+        ...this.boardDominoes,
+      ];
+      const intersects = this.raycaster.intersectObjects(allDominoMeshes, true);
 
-    if (this.hoveredObject && !this.selectedDomino) {
-      this.clearHighlight(this.hoveredObject);
-      this.hoveredObject = null;
-    }
+      // Clear previous hover highlight
+      if (this.hoveredObject) {
+        this.clearHighlight(this.hoveredObject);
+        this.hoveredObject = null;
+      }
 
-    if (intersects.length > 0 && !this.selectedDomino) {
-      const hoveredMesh = this.findParentDomino(
-        intersects[0]!.object,
-        rackMeshes
-      );
-      if (hoveredMesh) {
-        this.hoveredObject = hoveredMesh;
-        this.highlightDomino(hoveredMesh, 0x88ccff, 0.3);
+      // Apply new hover highlight
+      if (intersects.length > 0) {
+        const hoveredMesh = this.findParentDomino(
+          intersects[0]!.object,
+          allDominoMeshes
+        );
+        if (hoveredMesh) {
+          this.hoveredObject = hoveredMesh;
+          // Use blue highlight for rack dominoes, cyan for board dominoes
+          const isRackDomino = this.rackDominoes.some(
+            (d) => d.mesh === hoveredMesh
+          );
+          const color = isRackDomino ? 0x88ccff : 0x66ffff;
+          this.highlightDomino(hoveredMesh, color, 0.3);
+        }
       }
     }
   }

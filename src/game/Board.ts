@@ -244,6 +244,7 @@ export class Board {
       domino.dispose();
     });
     this.chainDominoes = [];
+    this.scene.boardDominoes = [];
 
     if (this.chain.length === 0) return;
 
@@ -264,6 +265,7 @@ export class Board {
       }
       this.chainDominoes.push(domino);
       this.scene.add(domino.getMesh());
+      this.scene.boardDominoes.push(domino.getMesh());
     });
 
     this.addRootOutline();
@@ -401,6 +403,7 @@ export class Board {
       domino.dispose();
     });
     this.chainDominoes = [];
+    this.scene.boardDominoes = [];
     this.chain = [];
     this.rootIndex = -1;
     this.openEnds = { left: null, right: null };
