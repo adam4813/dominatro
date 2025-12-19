@@ -21,8 +21,8 @@ export class HUD {
   private static readonly PANEL_PROGRESSION_HEIGHT = 120;
   private static readonly PANEL_BONE_PILE_WIDTH = 200;
   private static readonly PANEL_BONE_PILE_HEIGHT = 120;
-  private static readonly PANEL_RACK_WIDTH = 800;
-  private static readonly PANEL_RACK_HEIGHT = 200;
+  private static readonly PANEL_PASSIVE_POOL_WIDTH = 600;
+  private static readonly PANEL_PASSIVE_POOL_HEIGHT = 180;
 
   private static readonly FONT_LABEL = 'bold 16px Arial';
   private static readonly FONT_VALUE_LARGE = 'bold 42px Arial';
@@ -41,8 +41,8 @@ export class HUD {
 
   private static readonly SPRITE_SCALE_NORMAL_X = 2;
   private static readonly SPRITE_SCALE_NORMAL_Y = 1.2;
-  private static readonly SPRITE_SCALE_RACK_X = 8;
-  private static readonly SPRITE_SCALE_RACK_Y = 2;
+  private static readonly SPRITE_SCALE_PASSIVE_X = 6;
+  private static readonly SPRITE_SCALE_PASSIVE_Y = 1.8;
 
   private static readonly TILE_WIDTH = 80;
   private static readonly TILE_HEIGHT = 120;
@@ -53,24 +53,135 @@ export class HUD {
   private static readonly SPRITE_INDEX_SCORE = 0;
   private static readonly SPRITE_INDEX_PROGRESSION = 1;
   private static readonly SPRITE_INDEX_BONE_PILE = 2;
-  private static readonly SPRITE_INDEX_RACK = 3;
+  private static readonly SPRITE_INDEX_PASSIVE_POOL = 3;
 
   private gameState: GameState;
   private sprites: THREE.Sprite[] = [];
   private canvases: HUDCanvases = {};
   private hudScene: THREE.Scene;
   private hudCamera: THREE.OrthographicCamera;
+  private tooltipElement: HTMLDivElement;
 
   constructor(gameState: GameState) {
     this.gameState = gameState;
     this.handleResize = this.handleResize.bind(this);
+    this.handleMouseMove = this.handleMouseMove.bind(this);
 
     // Create a separate scene and orthographic camera for HUD rendering
     this.hudScene = new THREE.Scene();
     this.hudCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
 
+    // Create tooltip element
+    this.tooltipElement = document.createElement('div');
+    this.tooltipElement.style.position = 'absolute';
+    this.tooltipElement.style.backgroundColor = 'rgba(0, 0, 0, 0.9)';
+    this.tooltipElement.style.color = 'white';
+    this.tooltipElement.style.padding = '8px 12px';
+    this.tooltipElement.style.borderRadius = '4px';
+    this.tooltipElement.style.fontSize = '14px';
+    this.tooltipElement.style.pointerEvents = 'none';
+    this.tooltipElement.style.display = 'none';
+    this.tooltipElement.style.zIndex = '1000';
+    this.tooltipElement.style.maxWidth = '250px';
+    document.body.appendChild(this.tooltipElement);
+
     this.createHUD();
     window.addEventListener('resize', this.handleResize);
+    window.addEventListener('mousemove', this.handleMouseMove);
+  }
+
+  private getTileDescription(type: string): string {
+    switch (type) {
+      case 'doubler':
+        return 'Doubles the score of your next play';
+      case 'odd-favor':
+        return 'Grants bonus points when odd pip sums are scored';
+      case 'thief':
+        return 'Steals points or tiles from opponents';
+      case 'blank-slate':
+        return 'Resets certain game conditions';
+      case 'wild':
+        return 'Matches any pip value';
+      case 'crusher':
+        return 'Wildcard with crushing ability';
+      case 'cheater':
+        return 'Wildcard with rule-bending ability';
+      case 'spinner':
+        return 'Wildcard with rotation ability';
+      default:
+        return 'Special tile';
+    }
+  }
+
+  private handleMouseMove(event: MouseEvent): void {
+    const passivePool = this.gameState.getPassivePool();
+    if (passivePool.length === 0) {
+      this.tooltipElement.style.display = 'none';
+      return;
+    }
+
+    // Get the passive pool sprite position and dimensions
+    const sprite = this.sprites[HUD.SPRITE_INDEX_PASSIVE_POOL];
+    if (!sprite) {
+      this.tooltipElement.style.display = 'none';
+      return;
+    }
+
+    // Convert sprite position to screen coordinates
+    const spritePos = sprite.position.clone();
+    spritePos.project(this.hudCamera);
+
+    const screenX = (spritePos.x * 0.5 + 0.5) * window.innerWidth;
+    const screenY = (-spritePos.y * 0.5 + 0.5) * window.innerHeight;
+
+    const spriteWidth = sprite.scale.x * window.innerWidth * 0.5;
+    const spriteHeight = sprite.scale.y * window.innerHeight * 0.5;
+
+    // Calculate tile positions within the panel
+    const totalWidth =
+      passivePool.length * HUD.TILE_WIDTH +
+      (passivePool.length - 1) * HUD.TILE_SPACING;
+    const startX =
+      screenX - ((totalWidth / HUD.PANEL_PASSIVE_POOL_WIDTH) * spriteWidth) / 2;
+    const startY =
+      screenY -
+      spriteHeight / 2 +
+      (60 / HUD.PANEL_PASSIVE_POOL_HEIGHT) * spriteHeight;
+
+    const tileWidth =
+      (HUD.TILE_WIDTH / HUD.PANEL_PASSIVE_POOL_WIDTH) * spriteWidth;
+    const tileHeight =
+      (HUD.TILE_HEIGHT / HUD.PANEL_PASSIVE_POOL_HEIGHT) * spriteHeight;
+    const tileSpacing =
+      (HUD.TILE_SPACING / HUD.PANEL_PASSIVE_POOL_WIDTH) * spriteWidth;
+
+    // Check if mouse is over any tile
+    let hoveredTile: DominoData | null = null;
+    for (let i = 0; i < passivePool.length; i++) {
+      const tileX = startX + i * (tileWidth + tileSpacing);
+      const tileY = startY;
+
+      if (
+        event.clientX >= tileX &&
+        event.clientX <= tileX + tileWidth &&
+        event.clientY >= tileY &&
+        event.clientY <= tileY + tileHeight
+      ) {
+        hoveredTile = passivePool[i]!;
+        break;
+      }
+    }
+
+    if (hoveredTile) {
+      this.tooltipElement.textContent = this.getTileDescription(
+        hoveredTile.type
+      );
+      this.tooltipElement.style.display = 'block';
+      this.tooltipElement.style.left = `${event.clientX + 15}px`;
+      this.tooltipElement.style.top = `${event.clientY + 15}px`;
+    } else {
+      this.tooltipElement.style.display = 'none';
+    }
   }
 
   private createCanvasTexture(width: number, height: number): CanvasContext {
@@ -138,24 +249,27 @@ export class HUD {
       positions.topY
     );
 
-    // Create rack panel (bottom)
-    const rackCanvas = this.createCanvasTexture(
-      HUD.PANEL_RACK_WIDTH,
-      HUD.PANEL_RACK_HEIGHT
+    // Create passive pool panel (below top-center)
+    const passivePoolCanvas = this.createCanvasTexture(
+      HUD.PANEL_PASSIVE_POOL_WIDTH,
+      HUD.PANEL_PASSIVE_POOL_HEIGHT
     );
-    this.canvases.rack = rackCanvas;
-    this.drawRackPanel(rackCanvas.context, this.gameState.getPlayerRack());
-    const rackSprite = this.createSprite(
-      rackCanvas.canvas,
+    this.canvases.passivePool = passivePoolCanvas;
+    this.drawPassivePoolPanel(
+      passivePoolCanvas.context,
+      this.gameState.getPassivePool()
+    );
+    const passivePoolSprite = this.createSprite(
+      passivePoolCanvas.canvas,
       0,
-      positions.bottomY
+      0.65
     );
-    rackSprite.scale.set(
-      HUD.SPRITE_SCALE_RACK_X * 0.1,
-      HUD.SPRITE_SCALE_RACK_Y * 0.1,
+    passivePoolSprite.scale.set(
+      HUD.SPRITE_SCALE_PASSIVE_X * 0.1,
+      HUD.SPRITE_SCALE_PASSIVE_Y * 0.1,
       1
     );
-    this.sprites[HUD.SPRITE_INDEX_RACK] = rackSprite;
+    this.sprites[HUD.SPRITE_INDEX_PASSIVE_POOL] = passivePoolSprite;
 
     // Initial update
     this.updateAll();
@@ -201,8 +315,8 @@ export class HUD {
         0
       );
     }
-    if (this.sprites[HUD.SPRITE_INDEX_RACK]) {
-      this.sprites[HUD.SPRITE_INDEX_RACK].position.set(0, positions.bottomY, 0);
+    if (this.sprites[HUD.SPRITE_INDEX_PASSIVE_POOL]) {
+      this.sprites[HUD.SPRITE_INDEX_PASSIVE_POOL].position.set(0, 0.65, 0);
     }
   }
 
@@ -309,6 +423,46 @@ export class HUD {
     ctx.fillText(count.toString(), width / 2, 85);
   }
 
+  private drawPassivePoolPanel(
+    ctx: CanvasRenderingContext2D,
+    tiles: DominoData[]
+  ): void {
+    const width = ctx.canvas.width;
+    const height = ctx.canvas.height;
+
+    ctx.clearRect(0, 0, width, height);
+
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+    this.roundRect(ctx, 10, 10, width - 20, height - 20, 15);
+    ctx.fill();
+
+    ctx.fillStyle = HUD.COLOR_LABEL;
+    ctx.font = HUD.FONT_VALUE_SMALL_BOLD;
+    ctx.textAlign = 'center';
+    ctx.fillText('PASSIVE TILES', width / 2, 35);
+
+    if (tiles.length === 0) return;
+
+    const totalWidth =
+      tiles.length * HUD.TILE_WIDTH + (tiles.length - 1) * HUD.TILE_SPACING;
+    const startX = (width - totalWidth) / 2;
+    const startY = 60;
+
+    tiles.forEach((tile, index) => {
+      const x = startX + index * (HUD.TILE_WIDTH + HUD.TILE_SPACING);
+      this.drawDominoTile(
+        ctx,
+        x,
+        startY,
+        HUD.TILE_WIDTH,
+        HUD.TILE_HEIGHT,
+        tile.left,
+        tile.right,
+        tile.type
+      );
+    });
+  }
+
   private drawRackPanel(
     ctx: CanvasRenderingContext2D,
     tiles: DominoData[]
@@ -355,9 +509,43 @@ export class HUD {
     width: number,
     height: number,
     leftPips: number,
-    rightPips: number
+    rightPips: number,
+    type?: string
   ): void {
-    ctx.fillStyle = HUD.COLOR_TILE_BG;
+    // Set background color based on type
+    if (type && type !== 'standard') {
+      switch (type) {
+        case 'wild':
+          ctx.fillStyle = '#cc99ff';
+          break;
+        case 'doubler':
+          ctx.fillStyle = '#ffd700';
+          break;
+        case 'odd-favor':
+          ctx.fillStyle = '#ff6b6b';
+          break;
+        case 'spinner':
+          ctx.fillStyle = '#4ecdc4';
+          break;
+        case 'crusher':
+          ctx.fillStyle = '#6c5ce7';
+          break;
+        case 'cheater':
+          ctx.fillStyle = '#fd79a8';
+          break;
+        case 'thief':
+          ctx.fillStyle = '#2d3436';
+          break;
+        case 'blank-slate':
+          ctx.fillStyle = '#dfe6e9';
+          break;
+        default:
+          ctx.fillStyle = HUD.COLOR_TILE_BG;
+      }
+    } else {
+      ctx.fillStyle = HUD.COLOR_TILE_BG;
+    }
+
     ctx.strokeStyle = HUD.COLOR_TILE_BORDER;
     ctx.lineWidth = 3;
     this.roundRect(ctx, x, y, width, height, 8);
@@ -522,11 +710,11 @@ export class HUD {
     }
   }
 
-  updateRack(): void {
-    const playerRack = this.gameState.getPlayerRack();
-    if (this.canvases.rack) {
-      this.drawRackPanel(this.canvases.rack.context, playerRack);
-      const sprite = this.sprites[HUD.SPRITE_INDEX_RACK];
+  updatePassivePool(): void {
+    const passivePool = this.gameState.getPassivePool();
+    if (this.canvases.passivePool) {
+      this.drawPassivePoolPanel(this.canvases.passivePool.context, passivePool);
+      const sprite = this.sprites[HUD.SPRITE_INDEX_PASSIVE_POOL];
       if (sprite?.material.map) {
         sprite.material.map.needsUpdate = true;
       }
@@ -537,7 +725,7 @@ export class HUD {
     this.updateScore();
     this.updateBonePile();
     this.updateProgression();
-    this.updateRack();
+    this.updatePassivePool();
   }
 
   getHUDScene(): THREE.Scene {
@@ -550,6 +738,11 @@ export class HUD {
 
   destroy(): void {
     window.removeEventListener('resize', this.handleResize);
+    window.removeEventListener('mousemove', this.handleMouseMove);
+
+    if (this.tooltipElement.parentNode) {
+      this.tooltipElement.parentNode.removeChild(this.tooltipElement);
+    }
 
     this.sprites.forEach((sprite) => {
       this.hudScene.remove(sprite);

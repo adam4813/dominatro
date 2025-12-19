@@ -11,6 +11,9 @@ const RACK_SPACING = 1.5;
 const RACK_Z_POSITION = 4;
 const RACK_Y_POSITION = 0.1;
 
+// Constants for passive pool layout (HUD top center, below pulls/target)
+const PASSIVE_POOL_HUD_Y = 0.65; // Below progression panel
+
 /**
  * Main game controller class
  * Orchestrates the game components and handles user interactions

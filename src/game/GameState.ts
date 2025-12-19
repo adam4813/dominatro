@@ -8,6 +8,7 @@ import { SPECIAL_TILE_PIP_VALUE } from '../types';
 export class GameState {
   private bonePile: DominoData[] = [];
   private playerRack: DominoData[] = [];
+  private passivePool: DominoData[] = [];
   private board: DominoData[] = [];
   private score: number = 0;
   private totalPulls: number = 5;
@@ -16,6 +17,7 @@ export class GameState {
 
   constructor() {
     this.initializeBonePile();
+    this.initializePassivePool();
   }
 
   /**
@@ -38,17 +40,15 @@ export class GameState {
 
     // Add special tiles with unique behaviors:
     //
-    // WILDCARD TILES (match any pip value):
+    // PLAYABLE WILDCARD TILES (played to chain, match any pip value):
     // - Wild: Pure wildcard (2 tiles)
     // - Crusher: Wildcard + future crushing ability (1 tile)
     // - Cheater: Wildcard + future rule-bending ability (1 tile)
     // - Spinner: Wildcard + future rotation ability (1 tile)
     //
-    // SCORING MODIFIER TILES:
+    // PASSIVE/CONSUMABLE TILES (purchased/stored separately, provide effects):
     // - Doubler: Doubles the score of the play (2 tiles)
     // - Odd Favor: Bonus points for odd pip sums (1 tile)
-    //
-    // UTILITY TILES:
     // - Thief: Steals points or tiles (1 tile)
     // - Blank Slate: Resets certain game conditions (1 tile)
     //
@@ -68,27 +68,6 @@ export class GameState {
         type: 'wild',
       }
     );
-
-    // Doubler - doubles the score of the play (2 tiles)
-    this.bonePile.push(
-      {
-        left: SPECIAL_TILE_PIP_VALUE,
-        right: SPECIAL_TILE_PIP_VALUE,
-        type: 'doubler',
-      },
-      {
-        left: SPECIAL_TILE_PIP_VALUE,
-        right: SPECIAL_TILE_PIP_VALUE,
-        type: 'doubler',
-      }
-    );
-
-    // Odd Favor - bonus points for odd pip sums (1 tile)
-    this.bonePile.push({
-      left: SPECIAL_TILE_PIP_VALUE,
-      right: SPECIAL_TILE_PIP_VALUE,
-      type: 'odd-favor',
-    });
 
     // Spinner - wildcard with rotation ability (1 tile)
     this.bonePile.push({
@@ -110,20 +89,30 @@ export class GameState {
       right: SPECIAL_TILE_PIP_VALUE,
       type: 'cheater',
     });
+  }
 
-    // Thief - steals points or tiles (1 tile)
-    this.bonePile.push({
-      left: SPECIAL_TILE_PIP_VALUE,
-      right: SPECIAL_TILE_PIP_VALUE,
-      type: 'thief',
-    });
-
-    // Blank Slate - resets certain game conditions (1 tile)
-    this.bonePile.push({
-      left: SPECIAL_TILE_PIP_VALUE,
-      right: SPECIAL_TILE_PIP_VALUE,
-      type: 'blank-slate',
-    });
+  /**
+   * Initialize the passive tile pool with starter tiles for testing
+   */
+  private initializePassivePool(): void {
+    // Add 1-3 passive tiles for testing
+    this.passivePool.push(
+      {
+        left: SPECIAL_TILE_PIP_VALUE,
+        right: SPECIAL_TILE_PIP_VALUE,
+        type: 'doubler',
+      },
+      {
+        left: SPECIAL_TILE_PIP_VALUE,
+        right: SPECIAL_TILE_PIP_VALUE,
+        type: 'odd-favor',
+      },
+      {
+        left: SPECIAL_TILE_PIP_VALUE,
+        right: SPECIAL_TILE_PIP_VALUE,
+        type: 'thief',
+      }
+    );
   }
 
   /**
@@ -178,10 +167,12 @@ export class GameState {
    */
   reset(): void {
     this.playerRack = [];
+    this.passivePool = [];
     this.board = [];
     this.score = 0;
     this.pullsRemaining = 5;
     this.initializeBonePile();
+    this.initializePassivePool();
   }
 
   // Getters
@@ -219,6 +210,14 @@ export class GameState {
 
   getPlayerRackSize(): number {
     return this.playerRack.length;
+  }
+
+  getPassivePool(): DominoData[] {
+    return this.passivePool;
+  }
+
+  getPassivePoolSize(): number {
+    return this.passivePool.length;
   }
 
   /**

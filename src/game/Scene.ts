@@ -62,6 +62,9 @@ export class Scene {
   getPlacementOrientationCallback: GetPlacementOrientationCallback | null =
     null;
 
+  // Tooltip for 3D dominoes
+  private tooltipElement: HTMLDivElement;
+
   constructor() {
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0x2a4d2a);
@@ -74,6 +77,20 @@ export class Scene {
 
     this.raycaster = new THREE.Raycaster();
     this.mouse = new THREE.Vector2();
+
+    // Create tooltip element
+    this.tooltipElement = document.createElement('div');
+    this.tooltipElement.style.position = 'absolute';
+    this.tooltipElement.style.backgroundColor = 'rgba(0, 0, 0, 0.9)';
+    this.tooltipElement.style.color = 'white';
+    this.tooltipElement.style.padding = '8px 12px';
+    this.tooltipElement.style.borderRadius = '4px';
+    this.tooltipElement.style.fontSize = '14px';
+    this.tooltipElement.style.pointerEvents = 'none';
+    this.tooltipElement.style.display = 'none';
+    this.tooltipElement.style.zIndex = '1000';
+    this.tooltipElement.style.maxWidth = '250px';
+    document.body.appendChild(this.tooltipElement);
 
     this.handleResize = this.handleResize.bind(this);
     this.handleMouseMove = this.handleMouseMove.bind(this);
@@ -221,6 +238,40 @@ export class Scene {
     this.scene.add(this.ground);
   }
 
+  private getTileDescription(type: string): string {
+    switch (type) {
+      case 'wild':
+        return 'Matches any pip value';
+      case 'crusher':
+        return 'Wildcard with crushing ability';
+      case 'cheater':
+        return 'Wildcard with rule-bending ability';
+      case 'spinner':
+        return 'Wildcard with rotation ability';
+      case 'doubler':
+        return 'Doubles the score of your next play';
+      case 'odd-favor':
+        return 'Grants bonus points when odd pip sums are scored';
+      case 'thief':
+        return 'Steals points or tiles from opponents';
+      case 'blank-slate':
+        return 'Resets certain game conditions';
+      default:
+        return 'Special tile';
+    }
+  }
+
+  private showTooltip(x: number, y: number, type: string): void {
+    this.tooltipElement.textContent = this.getTileDescription(type);
+    this.tooltipElement.style.display = 'block';
+    this.tooltipElement.style.left = `${x + 15}px`;
+    this.tooltipElement.style.top = `${y + 15}px`;
+  }
+
+  private hideTooltip(): void {
+    this.tooltipElement.style.display = 'none';
+  }
+
   private handleMouseDown(event: MouseEvent): void {
     this.mouseDownPosition = { x: event.clientX, y: event.clientY };
     this.isDragging = false;
@@ -294,8 +345,32 @@ export class Scene {
           );
           const color = isRackDomino ? 0x88ccff : 0x66ffff;
           this.highlightDomino(hoveredMesh, color, 0.3);
+
+          // Show tooltip for wild tiles in rack
+          if (isRackDomino) {
+            const rackDomino = this.rackDominoes.find(
+              (d) => d.mesh === hoveredMesh
+            );
+            if (rackDomino && rackDomino.data.type !== 'standard') {
+              this.showTooltip(
+                event.clientX,
+                event.clientY,
+                rackDomino.data.type
+              );
+            } else {
+              this.hideTooltip();
+            }
+          } else {
+            this.hideTooltip();
+          }
+        } else {
+          this.hideTooltip();
         }
+      } else {
+        this.hideTooltip();
       }
+    } else {
+      this.hideTooltip();
     }
   }
 
@@ -418,6 +493,7 @@ export class Scene {
     this.selectedDominoFlipped = false;
 
     this.highlightDomino(dominoMesh, 0xffff00, 0.5);
+    this.hideTooltip();
 
     console.log('Scene: Selected domino:', this.selectedDominoData);
 
@@ -671,6 +747,11 @@ export class Scene {
     window.removeEventListener('mousedown', this.handleMouseDown);
     window.removeEventListener('click', this.handleMouseClick);
     window.removeEventListener('keydown', this.handleKeyDown);
+
+    if (this.tooltipElement.parentNode) {
+      this.tooltipElement.parentNode.removeChild(this.tooltipElement);
+    }
+
     this.renderer.dispose();
     this.controls.dispose();
     if (this.ground) {

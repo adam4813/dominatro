@@ -427,15 +427,11 @@ export class Board {
     }
     const dealtTiles = this.gameState.dealToRack(count);
     this.hud.updateBonePile();
-    this.hud.updateRack();
     return dealtTiles;
   }
 
   playTile(rackIndex: number): DominoData | null {
     const tile = this.gameState.playTileFromRack(rackIndex);
-    if (tile) {
-      this.hud.updateRack();
-    }
     return tile;
   }
 

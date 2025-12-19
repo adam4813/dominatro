@@ -27,9 +27,22 @@ export const WILDCARD_TYPES: readonly DominoType[] = [
   'spinner',
 ] as const;
 
+/** Tile types that are passive/consumable (not played to chain) */
+export const PASSIVE_TYPES: readonly DominoType[] = [
+  'doubler',
+  'odd-favor',
+  'thief',
+  'blank-slate',
+] as const;
+
 /** Check if a domino type is a wildcard */
 export function isWildcardType(type: DominoType): boolean {
   return WILDCARD_TYPES.includes(type);
+}
+
+/** Check if a domino type is passive/consumable */
+export function isPassiveType(type: DominoType): boolean {
+  return PASSIVE_TYPES.includes(type);
 }
 
 /** Represents a domino tile with left and right pip values */
@@ -86,7 +99,7 @@ export interface HUDCanvases {
   score?: CanvasContext;
   progression?: CanvasContext;
   bonePile?: CanvasContext;
-  rack?: CanvasContext;
+  passivePool?: CanvasContext;
 }
 
 /** Callback types for scene interactions */
