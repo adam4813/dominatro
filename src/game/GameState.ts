@@ -14,6 +14,7 @@ export class GameState {
   private totalPulls: number = 5;
   private pullsRemaining: number = 5;
   private targetScore: number = 100;
+  private rackLimit: number = 7;
 
   constructor() {
     this.initializeBonePile();
@@ -220,6 +221,10 @@ export class GameState {
     return this.passivePool.length;
   }
 
+  getRackLimit(): number {
+    return this.rackLimit;
+  }
+
   /**
    * Add points to the current score
    */
@@ -259,5 +264,29 @@ export class GameState {
       }
     }
     return null;
+  }
+
+  /**
+   * Discard all tiles from rack except those being held
+   * Returns the number of tiles discarded
+   */
+  discardUnheldTiles(heldTiles: DominoData[]): number {
+    const originalRackSize = this.playerRack.length;
+
+    // Filter rack to keep only held tiles
+    this.playerRack = this.playerRack.filter((tile) =>
+      heldTiles.some(
+        (held) =>
+          held.left === tile.left &&
+          held.right === tile.right &&
+          held.type === tile.type
+      )
+    );
+
+    const discarded = originalRackSize - this.playerRack.length;
+    console.log(
+      `GameState: Discarded ${discarded} tiles. Held ${this.playerRack.length} tiles.`
+    );
+    return discarded;
   }
 }

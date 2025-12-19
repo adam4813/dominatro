@@ -66,6 +66,7 @@ export interface RackDomino {
   domino: Domino;
   mesh: THREE.Group;
   data: DominoData;
+  isHeld?: boolean;
 }
 
 /** Represents a placement zone on the board */

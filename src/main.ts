@@ -10,6 +10,7 @@ import { SPECIAL_TILE_PIP_VALUE } from './types';
 const RACK_SPACING = 1.5;
 const RACK_Z_POSITION = 4;
 const RACK_Y_POSITION = 0.1;
+const RACK_HELD_Y_OFFSET = 0.5; // How much to raise held tiles
 
 // Constants for passive pool layout (HUD top center, below pulls/target)
 const PASSIVE_POOL_HUD_Y = 0.65; // Below progression panel
@@ -23,6 +24,8 @@ class Game {
   private gameState: GameState;
   private board: Board;
   private rackDominoes: RackDomino[] = [];
+  private holdModeActive: boolean = false;
+  private holdButton: HTMLButtonElement | null = null;
 
   constructor() {
     this.scene = new Scene();
@@ -38,6 +41,7 @@ class Game {
       app.appendChild(this.scene.getCanvas());
     }
 
+    this.createHoldButton();
     this.initializeGame();
     this.setupRack();
     this.setupInteractionCallbacks();
@@ -103,6 +107,194 @@ class Game {
     };
   }
 
+  private createHoldButton(): void {
+    this.holdButton = document.createElement('button');
+    this.holdButton.textContent = 'Hold & Discard';
+    this.holdButton.style.position = 'absolute';
+    this.holdButton.style.bottom = '20px';
+    this.holdButton.style.left = '50%';
+    this.holdButton.style.transform = 'translateX(-50%)';
+    this.holdButton.style.padding = '12px 24px';
+    this.holdButton.style.fontSize = '16px';
+    this.holdButton.style.fontWeight = 'bold';
+    this.holdButton.style.backgroundColor = '#ff6b6b';
+    this.holdButton.style.color = 'white';
+    this.holdButton.style.border = 'none';
+    this.holdButton.style.borderRadius = '8px';
+    this.holdButton.style.cursor = 'pointer';
+    this.holdButton.style.display = 'block';
+    this.holdButton.style.zIndex = '1000';
+    this.holdButton.style.transition = 'opacity 0.3s';
+
+    this.holdButton.addEventListener('click', () => this.toggleHoldMode());
+    document.body.appendChild(this.holdButton);
+
+    // Update button state initially
+    this.updateHoldButtonState();
+  }
+
+  private updateHoldButtonState(): void {
+    if (!this.holdButton) return;
+
+    const pullsRemaining = this.gameState.getPullsRemaining();
+    if (pullsRemaining <= 0 && !this.holdModeActive) {
+      // Disable button when no pulls remain
+      this.holdButton.style.opacity = '0.5';
+      this.holdButton.style.cursor = 'not-allowed';
+      this.holdButton.title = 'No pulls remaining';
+    } else {
+      this.holdButton.style.opacity = '1';
+      this.holdButton.style.cursor = 'pointer';
+      this.holdButton.title = '';
+    }
+  }
+
+  private toggleHoldMode(): void {
+    if (!this.holdModeActive) {
+      // Check if pulls are available
+      if (this.gameState.getPullsRemaining() <= 0) {
+        console.log('Game: No pulls remaining - cannot use Hold & Discard');
+        return;
+      }
+
+      // Enter hold mode
+      this.holdModeActive = true;
+      this.holdButton!.textContent = 'Confirm Discard';
+      this.holdButton!.style.backgroundColor = '#4ecdc4';
+      this.scene.deselectDomino();
+      console.log('Game: Hold mode activated - click tiles to hold them');
+    } else {
+      // Confirm and execute discard
+      this.executeHoldAndDiscard();
+    }
+  }
+
+  private executeHoldAndDiscard(): void {
+    const heldTiles = this.rackDominoes
+      .filter((rd) => rd.isHeld)
+      .map((rd) => rd.data);
+
+    const unheldCount = this.rackDominoes.length - heldTiles.length;
+
+    if (heldTiles.length === 0) {
+      console.log('Game: No tiles held, discarding entire rack');
+    } else {
+      console.log(
+        `Game: Holding ${heldTiles.length} tiles, discarding ${unheldCount}`
+      );
+    }
+
+    // If nothing to discard, just exit hold mode
+    if (unheldCount === 0) {
+      console.log('Game: All tiles held, nothing to discard');
+      this.rackDominoes.forEach((rd) => {
+        rd.isHeld = false;
+        rd.domino.setPosition(
+          rd.domino.getMesh().position.x,
+          RACK_Y_POSITION,
+          RACK_Z_POSITION
+        );
+      });
+      this.holdModeActive = false;
+      this.holdButton!.textContent = 'Hold & Discard';
+      this.holdButton!.style.backgroundColor = '#ff6b6b';
+      this.scene.deselectDomino();
+      return;
+    }
+
+    // Discard unheld tiles from game state
+    const discarded = this.gameState.discardUnheldTiles(heldTiles);
+
+    // Remove unheld visual dominoes
+    const tilesToRemove = this.rackDominoes.filter((rd) => !rd.isHeld);
+    tilesToRemove.forEach((rd) => {
+      this.scene.remove(rd.mesh);
+      rd.domino.dispose();
+    });
+
+    // Keep only held tiles
+    this.rackDominoes = this.rackDominoes.filter((rd) => rd.isHeld);
+
+    // Reset held status and lower tiles back down
+    this.rackDominoes.forEach((rd) => {
+      rd.isHeld = false;
+      rd.domino.setPosition(
+        rd.domino.getMesh().position.x,
+        RACK_Y_POSITION,
+        RACK_Z_POSITION
+      );
+    });
+
+    this.scene.rackDominoes = this.rackDominoes;
+    this.repositionRack();
+
+    // Exit hold mode and reset button
+    this.holdModeActive = false;
+    this.holdButton!.textContent = 'Hold & Discard';
+    this.holdButton!.style.backgroundColor = '#ff6b6b';
+    this.scene.deselectDomino();
+
+    console.log(
+      `Game: Discarded ${discarded} tiles. ${this.rackDominoes.length} tiles remain in rack.`
+    );
+
+    // Draw new tiles to fill rack up to limit
+    this.pullTilesToRack();
+
+    // Update button state after pull
+    this.updateHoldButtonState();
+  }
+
+  private pullTilesToRack(): void {
+    const rackLimit = this.gameState.getRackLimit();
+    const currentRackSize = this.rackDominoes.length;
+    const tilesToDraw = rackLimit - currentRackSize;
+
+    if (tilesToDraw <= 0) {
+      console.log('Game: Rack is already full');
+      return;
+    }
+
+    const bonePileSize = this.gameState.getBonePileSize();
+    const actualDraw = Math.min(tilesToDraw, bonePileSize);
+
+    console.log(
+      `Game: Drawing ${actualDraw} tiles to fill rack (${currentRackSize} -> ${currentRackSize + actualDraw})`
+    );
+
+    // Deal tiles from bone pile (even if 0)
+    const newTiles = this.board.dealTilesToRack(actualDraw);
+
+    // Create visual dominoes for new tiles
+    newTiles.forEach((dominoData) => {
+      const domino = new Domino(
+        dominoData.left,
+        dominoData.right,
+        dominoData.type
+      );
+
+      const rackDomino: RackDomino = {
+        domino,
+        mesh: domino.getMesh(),
+        data: dominoData,
+        isHeld: false,
+      };
+
+      this.rackDominoes.push(rackDomino);
+      this.scene.add(domino.getMesh());
+    });
+
+    this.scene.rackDominoes = this.rackDominoes;
+    this.repositionRack();
+
+    // Always decrement pulls remaining (even if bone pile was empty)
+    this.board.completePull();
+
+    console.log(
+      `Game: Rack now has ${this.rackDominoes.length} tiles. Bone pile: ${this.gameState.getBonePileSize()}, Pulls remaining: ${this.gameState.getPullsRemaining()}`
+    );
+  }
+
   private canFlipDomino(dominoData: DominoData): boolean {
     if (this.board.chain.length === 0) {
       return true;
@@ -130,7 +322,43 @@ class Game {
 
   private handleDominoSelected(dominoData: DominoData): void {
     console.log('Game: Domino selected:', dominoData);
-    this.updatePlacementZones(dominoData);
+
+    if (this.holdModeActive) {
+      // In hold mode, toggle the held status
+      this.toggleDominoHeld(dominoData);
+      this.scene.deselectDomino();
+    } else {
+      this.updatePlacementZones(dominoData);
+    }
+  }
+
+  private toggleDominoHeld(dominoData: DominoData): void {
+    const rackDomino = this.rackDominoes.find(
+      (rd) =>
+        rd.data.left === dominoData.left &&
+        rd.data.right === dominoData.right &&
+        rd.data.type === dominoData.type
+    );
+
+    if (!rackDomino) return;
+
+    rackDomino.isHeld = !rackDomino.isHeld;
+
+    // Raise or lower the tile visually
+    const yPos = rackDomino.isHeld
+      ? RACK_Y_POSITION + RACK_HELD_Y_OFFSET
+      : RACK_Y_POSITION;
+
+    rackDomino.domino.setPosition(
+      rackDomino.mesh.position.x,
+      yPos,
+      RACK_Z_POSITION
+    );
+
+    console.log(
+      `Game: Tile ${rackDomino.isHeld ? 'held' : 'released'}:`,
+      dominoData
+    );
   }
 
   private handleDominoDeselected(): void {
