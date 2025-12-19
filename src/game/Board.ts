@@ -60,15 +60,21 @@ export class Board {
 
     const openEnd = side === 'left' ? this.openEnds.left : this.openEnds.right;
 
-    // Special tiles that act as wildcards for matching
+    // Check if the tile being placed is a wildcard
     const isWildcard = isWildcardType(dominoData.type);
 
-    // Wildcard tiles match any value, otherwise check for standard pip matching
+    // Check if the open end is from a wildcard tile (indicated by SPECIAL_TILE_PIP_VALUE)
+    const openEndIsWildcard = openEnd === SPECIAL_TILE_PIP_VALUE;
+
+    // Wildcard tiles match any value, and any tile matches a wildcard open end
     const matches =
-      isWildcard || dominoData.left === openEnd || dominoData.right === openEnd;
+      isWildcard ||
+      openEndIsWildcard ||
+      dominoData.left === openEnd ||
+      dominoData.right === openEnd;
 
     console.log(
-      `Board: Checking placement on ${side} side. Open end: ${openEnd}, Domino: [${dominoData.left}|${dominoData.right}] (${dominoData.type}), Valid: ${matches}`
+      `Board: Checking placement on ${side} side. Open end: ${openEnd}, Domino: [${dominoData.left}|${dominoData.right}] (${dominoData.type}), Wildcard tile: ${isWildcard}, Wildcard end: ${openEndIsWildcard}, Valid: ${matches}`
     );
 
     return matches;
@@ -211,13 +217,25 @@ export class Board {
       return { left, right, type: dominoData.type };
     }
 
+    const isWildcard = isWildcardType(dominoData.type);
+    const leftOpenEnd = this.openEnds.left;
+    const rightOpenEnd = this.openEnds.right;
+
+    // Check if open ends are wildcards
+    const leftEndIsWildcard = leftOpenEnd === SPECIAL_TILE_PIP_VALUE;
+    const rightEndIsWildcard = rightOpenEnd === SPECIAL_TILE_PIP_VALUE;
+
     if (side === 'left') {
-      if (left === this.openEnds.left) {
+      // If placing a wildcard tile OR against a wildcard end, orientation doesn't matter
+      // Otherwise flip if left matches
+      if (!isWildcard && !leftEndIsWildcard && left === leftOpenEnd) {
         [left, right] = [right, left];
       }
       return { left, right, type: dominoData.type };
     } else {
-      if (right === this.openEnds.right) {
+      // If placing a wildcard tile OR against a wildcard end, orientation doesn't matter
+      // Otherwise flip if right matches
+      if (!isWildcard && !rightEndIsWildcard && right === rightOpenEnd) {
         [left, right] = [right, left];
       }
       return { left, right, type: dominoData.type };

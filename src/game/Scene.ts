@@ -454,15 +454,31 @@ export class Scene {
       if (child instanceof THREE.Mesh && child.material) {
         const material = child.material as THREE.MeshStandardMaterial;
 
+        // Clone shared materials before modifying (skip marker material which has its own glow)
         if (
           material === Domino.bodyMaterial ||
           material === Domino.lineMaterial ||
-          material === Domino.pipMaterial
+          material === Domino.pipMaterial ||
+          material === Domino.xLineMaterial ||
+          material === Domino.wildMaterial ||
+          material === Domino.doublerMaterial ||
+          material === Domino.oddFavorMaterial ||
+          material === Domino.spinnerMaterial ||
+          material === Domino.crusherMaterial ||
+          material === Domino.cheaterMaterial ||
+          material === Domino.thiefMaterial ||
+          material === Domino.blankSlateMaterial
         ) {
           child.material = material.clone();
         }
 
         const clonedMaterial = child.material as THREE.MeshStandardMaterial;
+
+        // Skip marker material (center nub) - it already has its own emissive glow
+        if (material === Domino.markerMaterial) {
+          return;
+        }
+
         if (!child.userData.originalEmissive) {
           child.userData.originalEmissive = clonedMaterial.emissive.clone();
           child.userData.originalEmissiveIntensity =
