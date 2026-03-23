@@ -15,6 +15,7 @@ export class GameState {
   private pullsRemaining: number = 5;
   private targetScore: number = 100;
   private rackLimit: number = 7;
+  private maxHoldCount: number = 2;
 
   constructor() {
     this.initializeBonePile();
@@ -223,6 +224,15 @@ export class GameState {
 
   getRackLimit(): number {
     return this.rackLimit;
+  }
+
+  getMaxHoldCount(): number {
+    return this.maxHoldCount;
+  }
+
+  increaseMaxHoldCount(amount: number = 1): void {
+    this.maxHoldCount += amount;
+    console.log(`GameState: Max hold count increased to ${this.maxHoldCount}`);
   }
 
   /**

@@ -26,6 +26,7 @@ class Game {
   private rackDominoes: RackDomino[] = [];
   private holdModeActive: boolean = false;
   private holdButton: HTMLButtonElement | null = null;
+  private holdCountDisplay: HTMLDivElement | null = null;
 
   constructor() {
     this.scene = new Scene();
@@ -42,6 +43,7 @@ class Game {
     }
 
     this.createHoldButton();
+    this.createHoldCountDisplay();
     this.initializeGame();
     this.setupRack();
     this.setupInteractionCallbacks();
@@ -133,6 +135,40 @@ class Game {
     this.updateHoldButtonState();
   }
 
+  private createHoldCountDisplay(): void {
+    this.holdCountDisplay = document.createElement('div');
+    this.holdCountDisplay.style.position = 'absolute';
+    this.holdCountDisplay.style.bottom = '70px';
+    this.holdCountDisplay.style.left = '50%';
+    this.holdCountDisplay.style.transform = 'translateX(-50%)';
+    this.holdCountDisplay.style.padding = '8px 16px';
+    this.holdCountDisplay.style.fontSize = '14px';
+    this.holdCountDisplay.style.fontWeight = 'bold';
+    this.holdCountDisplay.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+    this.holdCountDisplay.style.color = 'white';
+    this.holdCountDisplay.style.borderRadius = '6px';
+    this.holdCountDisplay.style.display = 'none';
+    this.holdCountDisplay.style.zIndex = '1000';
+
+    document.body.appendChild(this.holdCountDisplay);
+  }
+
+  private updateHoldCountDisplay(): void {
+    if (!this.holdCountDisplay) return;
+
+    const heldCount = this.rackDominoes.filter((rd) => rd.isHeld).length;
+    const maxHold = this.gameState.getMaxHoldCount();
+
+    this.holdCountDisplay.textContent = `Holding: ${heldCount}/${maxHold}`;
+
+    // Change color based on limit
+    if (heldCount >= maxHold) {
+      this.holdCountDisplay.style.color = '#ff6b6b'; // Red when at limit
+    } else {
+      this.holdCountDisplay.style.color = 'white';
+    }
+  }
+
   private updateHoldButtonState(): void {
     if (!this.holdButton) return;
 
@@ -161,6 +197,8 @@ class Game {
       this.holdModeActive = true;
       this.holdButton!.textContent = 'Confirm Discard';
       this.holdButton!.style.backgroundColor = '#4ecdc4';
+      this.holdCountDisplay!.style.display = 'block';
+      this.updateHoldCountDisplay();
       this.scene.deselectDomino();
       console.log('Game: Hold mode activated - click tiles to hold them');
     } else {
@@ -198,6 +236,7 @@ class Game {
       this.holdModeActive = false;
       this.holdButton!.textContent = 'Hold & Discard';
       this.holdButton!.style.backgroundColor = '#ff6b6b';
+      this.holdCountDisplay!.style.display = 'none';
       this.scene.deselectDomino();
       return;
     }
@@ -232,6 +271,7 @@ class Game {
     this.holdModeActive = false;
     this.holdButton!.textContent = 'Hold & Discard';
     this.holdButton!.style.backgroundColor = '#ff6b6b';
+    this.holdCountDisplay!.style.display = 'none';
     this.scene.deselectDomino();
 
     console.log(
@@ -342,6 +382,15 @@ class Game {
 
     if (!rackDomino) return;
 
+    const currentHeldCount = this.rackDominoes.filter((rd) => rd.isHeld).length;
+    const maxHoldCount = this.gameState.getMaxHoldCount();
+
+    // If trying to hold and already at max, don't allow
+    if (!rackDomino.isHeld && currentHeldCount >= maxHoldCount) {
+      console.log(`Game: Cannot hold more than ${maxHoldCount} tiles`);
+      return;
+    }
+
     rackDomino.isHeld = !rackDomino.isHeld;
 
     // Raise or lower the tile visually
@@ -359,6 +408,9 @@ class Game {
       `Game: Tile ${rackDomino.isHeld ? 'held' : 'released'}:`,
       dominoData
     );
+
+    // Update the hold count display
+    this.updateHoldCountDisplay();
   }
 
   private handleDominoDeselected(): void {
@@ -562,6 +614,11 @@ class Game {
   testCompletePull(): void {
     this.board.completePull();
     console.log('Pulls remaining:', this.board.gameState.getPullsRemaining());
+  }
+
+  testIncreaseMaxHold(amount: number = 1): void {
+    this.gameState.increaseMaxHoldCount(amount);
+    console.log('Max hold count:', this.gameState.getMaxHoldCount());
   }
 }
 
